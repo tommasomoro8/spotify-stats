@@ -1,10 +1,5 @@
 if (innerHeight > innerWidth) {
     document.body.style.zoom = "40%";
-    const a = document.getElementsByClassName("button")
-    for (let i = 0; i < a; i++) {
-        a[i].style.width = "300px"
-        a[i].style.height = "200px"
-    }
 }
 
 const timeRanges = [/* 1m */"short_term", /* 6m */"medium_term", /* all */"long_term"]
@@ -72,10 +67,14 @@ async function spotifyTopTracks(timeRange = 1, createUi = true) {
 
                     let img = document.createElement("img")
                     img.classList.add("img")
-                    img.src = tracks.items[i].album.images[0].url
+                    try {
+                        img.src = tracks.items[i].album.images[0].url
+                    } catch (error) {}
                     img.alt = "img"
-                    img.addEventListener("click", () => window.open(tracks.items[i].album.external_urls.spotify))
-                    img.title = `Album name: ${tracks.items[i].album.name}`
+                    try {
+                        img.addEventListener("click", () => window.open(tracks.items[i].album.external_urls.spotify))
+                        img.title = `Album name: ${tracks.items[i].album.name}`
+                    } catch (error) {}
                     classifiedContainer.appendChild(img)
 
                     let txt = document.createElement("div")
@@ -83,20 +82,24 @@ async function spotifyTopTracks(timeRange = 1, createUi = true) {
 
                         let title = document.createElement("div")
                         title.classList.add("title")
-                        title.innerText = tracks.items[i].name
-                        title.addEventListener("click", () => window.open(tracks.items[i].external_urls.spotify))
-                        title.title = `Song name: ${tracks.items[i].name}`
+                        try {
+                            title.innerText = tracks.items[i].name
+                            title.addEventListener("click", () => window.open(tracks.items[i].external_urls.spotify))
+                            title.title = `Song name: ${tracks.items[i].name}`
+                        } catch (error) {}
                         txt.appendChild(title)
 
                         let artist = document.createElement("div")
                         artist.classList.add("artist")
-                        for (let j = 0; j < tracks.items[i].artists.length; j++)
-                            if (j == 0)
-                                artist.innerText = tracks.items[i].artists[0].name
-                            else
-                                artist.innerText += `, ${tracks.items[i].artists[j].name}`
-                        artist.addEventListener("click", () => window.open(tracks.items[i].artists[0].external_urls.spotify))
-                        artist.title = `Artist name: ${tracks.items[i].artists[0].name}`
+                        try {
+                            for (let j = 0; j < tracks.items[i].artists.length; j++)
+                                if (j == 0)
+                                    artist.innerText = tracks.items[i].artists[0].name
+                                else
+                                    artist.innerText += `, ${tracks.items[i].artists[j].name}`
+                            artist.addEventListener("click", () => window.open(tracks.items[i].artists[0].external_urls.spotify))
+                            artist.title = `Artist name: ${tracks.items[i].artists[0].name}`
+                        } catch (error) {}
                         txt.appendChild(artist)
                     
                     classifiedContainer.appendChild(txt)
