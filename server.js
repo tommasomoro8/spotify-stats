@@ -18,7 +18,7 @@ const secureHttps = require("./middleware/secureHttps")
 
 const client_id = process.env.CLIENT_ID;
 const client_secret = process.env.CLIENT_SECRET;
-const redirect_uri = 'http://localhost:3000/callback';
+const redirect_uri = process.env.REDIRECT_URI;
 
 function generateRandomString(length) {
     let text = "";
@@ -30,6 +30,7 @@ function generateRandomString(length) {
     return text;
 };
 
+app.set("trust proxy", true);
 app.use(secureHttps(dev))
 app.use(cookieParser())
 
@@ -148,5 +149,3 @@ const port = process.env.PORT || 3000
 app.listen(port, () => {
     console.log(`listening on port ${port} in ${app.get("env")} mode...`)
 }) //export NODE_ENV=production or development
-
-//PAOLOOO
