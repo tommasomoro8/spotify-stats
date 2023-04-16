@@ -38,6 +38,11 @@ async function spotifyTopTracks(timeRange = 1, createUi = true) {
 
         const tracks = await result.json()
 
+        if (tracks.total === 0) {
+            alert("Non hai tracce preferite")
+            return
+        }
+
         if (createUi) {
             for (let i = 0; i < 50/*tracks.items.length*/; i++) {
                 let classifiedContainer = document.createElement("div")
@@ -128,6 +133,11 @@ async function spotifyTopArtists(timeRange = 1, createUi = true) {
         }
 
         const artists = await result.json()
+
+        if (artists.total === 0) {
+            alert("Non hai artisti preferiti")
+            return
+        }
 
         if (createUi) {
             for (let i = 0; i < 50/*artists.items.length*/; i++) {
