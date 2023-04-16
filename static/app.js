@@ -1,6 +1,10 @@
-
 if (innerHeight > innerWidth) {
     document.body.style.zoom = "40%";
+    const a = document.getElementsByClassName("button")
+    for (let i = 0; i < a; i++) {
+        a[i].style.width = "300px"
+        a[i].style.height = "200px"
+    }
 }
 
 const timeRanges = [/* 1m */"short_term", /* 6m */"medium_term", /* all */"long_term"]
