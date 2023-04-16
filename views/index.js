@@ -45,11 +45,6 @@ module.exports = (access_token) => {
         
 
         <style>
-            .button {
-                width: 300px;
-                height: 200px;
-            }
-
             #container {
                 width: max(100vw, 900px);
                 max-width: 1080px;
