@@ -1,3 +1,8 @@
+
+if (innerHeight > innerWidth) {
+    document.body.style.zoom = "40%";
+}
+
 const timeRanges = [/* 1m */"short_term", /* 6m */"medium_term", /* all */"long_term"]
 const APIKey = document.getElementById("hidden-access-token").innerText; document.getElementById("hidden-access-token").remove()
 let timeRange

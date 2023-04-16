@@ -12,9 +12,9 @@ module.exports = (access_token) => {
     </head>
     <body>
         <div class="row">
-            <button id="button-0">4 Settimane</button>
-            <button id="button-1">6 Mesi</button>
-            <button id="button-2">Sempre</button>
+            <button class="button" id="button-0">4 Settimane</button>
+            <button class="button" id="button-1">6 Mesi</button>
+            <button class="button" id="button-2">Sempre</button>
         </div>
         <div id="name"></div>
         <div id="timeRange"></div>
@@ -45,6 +45,10 @@ module.exports = (access_token) => {
         
 
         <style>
+            .button {
+                width: 300px;
+                height: 200px;
+            }
 
             #container {
                 width: max(100vw, 900px);
