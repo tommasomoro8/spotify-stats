@@ -1,5 +1,5 @@
 const request = require("request-promise-native")
-const db = require("./firebase")
+const { db } = require("./firebase")
 
 async function getUserInfo(access_token, refresh_token) {
     let userInfo

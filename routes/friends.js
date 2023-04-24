@@ -203,6 +203,10 @@ router.post("/invite/:user", async (req, res) => {
         return res.status(500).send("database error")
     }
 
+    const notification = await addNotifications(friendId, `${userInfo.display_name} ti ha invitato ad essere suo amico!`)
+    if (notification.error)
+        return res.status(500).send("notifications.error")
+
     res.send("done")
 })
 
@@ -253,6 +257,10 @@ router.post("/remove/:user", async (req, res) => {
         console.log(error)
         return res.status(500).send("database error")
     }
+
+    const notification = await addNotifications(friendId, `${userInfo.display_name} ti ha rimosso dai suoi amici`)
+    if (notification.error)
+        return res.status(500).send("notifications.error")
 
     res.send("done")
 })
@@ -311,6 +319,10 @@ router.post("/invite-cancel/:user", async (req, res) => {
         return res.status(500).send("database error")
     }
 
+    const notification = await addNotifications(friendId, `${userInfo.display_name} ha cancellato la sua richiesta di amicizia`)
+    if (notification.error)
+        return res.status(500).send("notifications.error")
+
     res.send("done")
 })
 
@@ -367,6 +379,10 @@ router.post("/invite-accept/:user", async (req, res) => {
         return res.status(500).send("database error")
     }
 
+    const notification = await addNotifications(friendId, `${userInfo.display_name} ha accettato la tua richiesta di amicizia!`)
+    if (notification.error)
+        return res.status(500).send("notifications.error")
+
     res.send("done")
 })
 
@@ -419,6 +435,10 @@ router.post("/invite-decline/:user", async (req, res) => {
         console.log(error)
         return res.status(500).send("database error")
     }
+
+    const notification = await addNotifications(friendId, `${userInfo.display_name} ha rifiutato la tua richiesta di amicizia`)
+    if (notification.error)
+        return res.status(500).send("notifications.error")
 
     res.send("done")
 })

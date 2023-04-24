@@ -1,4 +1,5 @@
 module.exports = (access_token, userInfo) => {
+    delete userInfo.refresh_token
     // usa userInfo e leva chiamata da client
     return /*html*/`
     <!DOCTYPE html>

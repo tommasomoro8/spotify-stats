@@ -9,11 +9,13 @@ const dev = app.get("env") === 'development'
 
 if (dev) require('dotenv').config()
 
+const { db } = require("./services/firebase")
 const spotify = require("./services/spotify")
 const generateRandomString = require("./services/randString")
 
 /* routes */
 const { router: friends, friendList, invitedList, invitedByList } = require('./routes/friends')
+const notifications = require('./routes/notifications')
 
 /* views */
 const resultpage = require('./views/result')
@@ -35,11 +37,11 @@ app.use(cookieParser())
 app.use("/", express.static('./static'))
 
 app.use("/friends", friends)
-
+app.use("/notifications", notifications)
 
 app.get("/", async (req, res) => {
-    let access_token = req.cookies.access_token
-    let refresh_token = req.cookies.refresh_token
+    const access_token = req.cookies.access_token
+    const refresh_token = req.cookies.refresh_token
 
     if (!access_token && !refresh_token) {
         res.setHeader("Content-Type", "text/html")
@@ -105,47 +107,9 @@ app.get("/", async (req, res) => {
 })
 
 
-
-app.get('/result', async (req, res) => {
-    if (req.query.refresh_token) {
-        let tokens
-        try {
-            tokens = await request({
-                method: 'post',
-                url: 'https://accounts.spotify.com/api/token',
-                headers: {
-                    Authorization: 'Basic ' + (new Buffer.from(client_id + ':' + client_secret).toString('base64'))
-                },
-                form: {
-                    refresh_token: req.query.refresh_token,
-                    grant_type: 'refresh_token'
-                },
-                json: true
-            })
-        } catch (error) {
-            console.log("error request tokens", error)
-            return res.status(403).send("refresh_token non valido, l'utente proprietario protrebbe averlo disabilitato. potrai continuare a vedere la sua attività quando esso eseguirà il login nuovamente")
-        }
-        
-        res.setHeader("Content-Type", "text/html")
-        return res.send(resultpage(tokens.access_token)) //friend result
-    }
-
-    let userInfo = await spotify.getUserInfo(req.cookies.access_token)
-    if (userInfo.error) {
-        res.clearCookie("access_token")
-        return res.redirect("/refresh_token")
-    }
-
-    res.setHeader("Content-Type", "text/html")
-    return res.send(resultpage(req.cookies.access_token, userInfo)) //user result
-})
-
-
-
 app.get('/login', (req, res) => {
-    let state = generateRandomString(16);
-    let scope = 'user-read-private user-read-email user-top-read user-read-recently-played';
+    const state = generateRandomString(16);
+    const scope = 'user-read-private user-read-email user-top-read user-read-recently-played';
     
     res.redirect('https://accounts.spotify.com/authorize?' +
         querystring.stringify({
@@ -160,8 +124,8 @@ app.get('/login', (req, res) => {
 
 
 app.get('/callback', async (req, res) => {
-    let code = req.query.code || null;
-    let state = req.query.state || null;
+    const code = req.query.code || null;
+    const state = req.query.state || null;
   
     if (state === null)
         return res.status(401).send('state_mismatch')
@@ -201,7 +165,7 @@ app.get('/callback', async (req, res) => {
 
 
 app.get('/refresh_token', async (req, res) => {
-    let refresh_token = req.query.refresh_token || req.cookies.refresh_token
+    const refresh_token = req.query.refresh_token || req.cookies.refresh_token
 
     let tokens
     try {
@@ -232,21 +196,67 @@ app.get('/refresh_token', async (req, res) => {
 
     res.cookie("access_token", tokens.access_token, { maxAge: 60 * 60 * 1 * 1000 /* 1h */, httpOnly: true, secure: true, SameSite: 'strict' })
             
+    if (req.query.then)
+        return res.redirect("/"+req.query.then)
+
     return res.redirect("/")
 })
 
+app.get('/:friendId', async (req, res) => {
+    const friendId = req.params.friendId
+    const access_token = req.cookies.access_token
+    const refresh_token = req.cookies.refresh_token
+
+    let userInfo = await spotify.getUserInfo(access_token, refresh_token)
+    if (userInfo.error) {
+        res.clearCookie("access_token")
+        return res.redirect(`/refresh_token?then=${friendId}`)
+    }
+
+    let check
+    try {
+        check = await db.collection('users').doc(userInfo.id).collection('friends').doc(friendId).get()
+    } catch (error) {
+        console.log(error)
+        return res.status(500).send("error checking user")
+    }
+
+    if (!check.exists)
+        return res.status(403).send(`${friendId} non è tuo amico o non esiste`)
 
 
+    let friend
+    try {
+        friend = await db.collection('users').doc(friendId).get()
+    } catch (error) {
+        console.log(error)
+        return res.status(500).send("error checking user")
+    }
 
+    let friendData = friend.data()
 
-app.get("/test", (req, res) => {
-    res.send({
-        a: "ciao",
-        b: 200,
-        c: true
-    })
+    let tokens
+    try {
+        tokens = await request({
+            method: 'post',
+            url: 'https://accounts.spotify.com/api/token',
+            headers: {
+                Authorization: 'Basic ' + (new Buffer.from(client_id + ':' + client_secret).toString('base64'))
+            },
+            form: {
+                refresh_token: friendData.refresh_token,
+                grant_type: 'refresh_token'
+            },
+            json: true
+        })
+    } catch (error) {
+        console.log("error request tokens", error)
+        return res.status(403).send("refresh_token non valido, l'utente proprietario protrebbe averlo disabilitato. potrai continuare a vedere la sua attività quando esso eseguirà il login nuovamente")
+    }
+        
+    res.setHeader("Content-Type", "text/html")
+    return res.send(resultpage(tokens.access_token, friendData)) //friend result
 })
-
 
 
 app.get("*", (req, res) => {
