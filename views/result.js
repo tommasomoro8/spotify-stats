@@ -1,4 +1,5 @@
-module.exports = (access_token) => {
+module.exports = (access_token, userInfo) => {
+    // usa userInfo e leva chiamata da client
     return /*html*/`
     <!DOCTYPE html>
     <html lang="en">
@@ -11,6 +12,7 @@ module.exports = (access_token) => {
         <title>Spotify Stats</title>
     </head>
     <body>
+        <button onclick="window.location.href = '/'"><-- indietro</button>
         <div class="row">
             <button class="button" id="button-0">4 Settimane</button>
             <button class="button" id="button-1">6 Mesi</button>
@@ -146,13 +148,14 @@ module.exports = (access_token) => {
                 cursor: pointer;
             }
 
-            #hidden-access-token {
+            #hidden-access-token, #hidden-user-info {
                 display: none!important;
             }
 
         </style>
 
         <div id="hidden-access-token">${access_token}</div>
+        <div id="hidden-user-info">${JSON.stringify(userInfo)}</div>
         <script src="app.js"></script>
     </body>
     </html>

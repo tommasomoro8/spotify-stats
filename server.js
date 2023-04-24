@@ -1,5 +1,5 @@
 const querystring = require("querystring")
-const request = require("request")
+const request = require("request-promise-native")
 const cookieParser = require("cookie-parser")
 
 const express = require("express")
@@ -9,26 +9,24 @@ const dev = app.get("env") === 'development'
 
 if (dev) require('dotenv').config()
 
+const spotify = require("./services/spotify")
+const generateRandomString = require("./services/randString")
+
+/* routes */
+const { router: friends, friendList, invitedList, invitedByList } = require('./routes/friends')
+
 /* views */
-const indexpage = require('./views/index')
+const resultpage = require('./views/result')
 const landingpage = require('./views/landing')
+const homepage = require('./views/home')
 
 /* middleware */
 const secureHttps = require("./middleware/secureHttps")
 
-const client_id = process.env.CLIENT_ID;
-const client_secret = process.env.CLIENT_SECRET;
-const redirect_uri = process.env.REDIRECT_URI;
+const client_id = process.env.CLIENT_ID_SPOTIFY;
+const client_secret = process.env.CLIENT_SECRET_SPOTIFY;
+const redirect_uri = process.env.REDIRECT_URI_SPOTIFY;
 
-function generateRandomString(length) {
-    let text = "";
-    let possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-
-    for (let i = 0; i < length; i++)
-        text += possible.charAt(Math.floor(Math.random() * possible.length));
-
-    return text;
-};
 
 app.set("trust proxy", true);
 app.use(secureHttps(dev))
@@ -36,7 +34,10 @@ app.use(cookieParser())
 
 app.use("/", express.static('./static'))
 
-app.get("/", (req, res) => {
+app.use("/friends", friends)
+
+
+app.get("/", async (req, res) => {
     let access_token = req.cookies.access_token
     let refresh_token = req.cookies.refresh_token
 
@@ -48,15 +49,104 @@ app.get("/", (req, res) => {
     if (!access_token && refresh_token)
         return res.redirect("/refresh_token")
 
-    res.setHeader("Content-Type", "text/html")
-    res.send(indexpage(access_token))
+
+    let userInfo = await spotify.getUserInfo(access_token)
+    if (userInfo.error) {
+        res.clearCookie("access_token")
+        return res.redirect("/refresh_token")
+    }
+
+    let friendL = []
+    let invitedL = []
+    let invitedByL = []
+    let index = 0
+
+    function sendResponse() {
+        if (friendL === undefined || invitedL === undefined || invitedByL === undefined)
+            return res.status(500).send("retrieve friends error")
+
+        res.setHeader("Content-Type", "text/html")
+        res.send(homepage(userInfo, friendL, invitedL, invitedByL, access_token))
+    }
+
+    friendList(userInfo, (_friends) => {
+        index++
+
+        if (_friends.error)
+            friendL = undefined
+
+        friendL = _friends
+
+        if (index === 3) 
+            sendResponse()
+    })
+    invitedList(userInfo, (_invited) => {
+        index++
+        
+        if (_invited.error)
+            invitedL = undefined
+
+        invitedL = _invited
+        
+        if (index === 3)
+            sendResponse()
+    })
+    invitedByList(userInfo, (_invitedBy) => {
+        index++
+        
+        if (_invitedBy.error)
+            invitedByL = undefined
+
+        invitedByL = _invitedBy
+
+        if (index === 3) 
+            sendResponse()
+    })
 })
 
 
+
+app.get('/result', async (req, res) => {
+    if (req.query.refresh_token) {
+        let tokens
+        try {
+            tokens = await request({
+                method: 'post',
+                url: 'https://accounts.spotify.com/api/token',
+                headers: {
+                    Authorization: 'Basic ' + (new Buffer.from(client_id + ':' + client_secret).toString('base64'))
+                },
+                form: {
+                    refresh_token: req.query.refresh_token,
+                    grant_type: 'refresh_token'
+                },
+                json: true
+            })
+        } catch (error) {
+            console.log("error request tokens", error)
+            return res.status(403).send("refresh_token non valido, l'utente proprietario protrebbe averlo disabilitato. potrai continuare a vedere la sua attività quando esso eseguirà il login nuovamente")
+        }
+        
+        res.setHeader("Content-Type", "text/html")
+        return res.send(resultpage(tokens.access_token)) //friend result
+    }
+
+    let userInfo = await spotify.getUserInfo(req.cookies.access_token)
+    if (userInfo.error) {
+        res.clearCookie("access_token")
+        return res.redirect("/refresh_token")
+    }
+
+    res.setHeader("Content-Type", "text/html")
+    return res.send(resultpage(req.cookies.access_token, userInfo)) //user result
+})
+
+
+
 app.get('/login', (req, res) => {
-    var state = generateRandomString(16);
-    var scope = 'user-read-private user-read-email user-top-read';
-  
+    let state = generateRandomString(16);
+    let scope = 'user-read-private user-read-email user-top-read user-read-recently-played';
+    
     res.redirect('https://accounts.spotify.com/authorize?' +
         querystring.stringify({
             response_type: 'code',
@@ -67,71 +157,95 @@ app.get('/login', (req, res) => {
         }))
 })
 
-app.get('/callback', (req, res) => {
+
+
+app.get('/callback', async (req, res) => {
     let code = req.query.code || null;
     let state = req.query.state || null;
   
     if (state === null)
-        return res.send('state_mismatch')
-    
-    let authOptions = {
-        url: 'https://accounts.spotify.com/api/token',
-        form: {
-            code: code,
-            redirect_uri: redirect_uri,
-            grant_type: 'authorization_code'
-        },
-        headers: {
-            'Authorization': 'Basic ' + (new Buffer.from(client_id + ':' + client_secret).toString('base64'))
-        },
-        json: true
+        return res.status(401).send('state_mismatch')
+
+    let tokens
+    try {
+        tokens = await request({
+            method: 'post',
+            url: 'https://accounts.spotify.com/api/token',
+            headers: {
+              Authorization: 'Basic ' + (new Buffer.from(client_id + ':' + client_secret).toString('base64'))
+            },
+            form: {
+                code,
+                redirect_uri: redirect_uri,
+                grant_type: 'authorization_code'
+            },
+            json: true
+        })
+    } catch (error) {
+        console.log("error request tokens", error)
+        return res.status(500).send("error request tokens")
     }
 
-    request.post(authOptions, (error, response, body) => {
-        if (!error && response.statusCode === 200) {
-            res.cookie("access_token", body.access_token, { maxAge: 60 * 60 * 1 * 1000 /* 1h */, httpOnly: true, secure: true, SameSite: 'strict' })
-            res.cookie("refresh_token", body.refresh_token, { maxAge: 60 * 60 * 87600 * 1000 /* 1y */, httpOnly: true, secure: true, SameSite: 'strict' })
-            
-            return res.redirect("/")
-        }
-        else {
-            console.log(error)
-            console.log(response.statusCode)
-            // console.log(response)
-            return res.send("error")
-        }
-    })
+    let userInfo = await spotify.getUserInfo(tokens.access_token, tokens.refresh_token)
+    if (userInfo.error) {
+        res.clearCookie("access_token")
+        return res.redirect("/refresh_token")
+    }
+
+    res.cookie("access_token", tokens.access_token, { maxAge: 60 * 60 * 1 * 1000 /* 1h */, httpOnly: true, secure: true, SameSite: 'strict' })
+    res.cookie("refresh_token", tokens.refresh_token, { maxAge: 60 * 60 * 87600 * 1000 /* 1y */, httpOnly: true, secure: true, SameSite: 'strict' })
+
+    return res.redirect("/")
 })
 
 
-app.get('/refresh_token', (req, res) => {
+
+app.get('/refresh_token', async (req, res) => {
     let refresh_token = req.query.refresh_token || req.cookies.refresh_token
 
-    let authOptions = {
-        url: 'https://accounts.spotify.com/api/token',
-        headers: { 'Authorization': 'Basic ' + (new Buffer.from(client_id + ':' + client_secret).toString('base64')) },
-        form: {
-            grant_type: 'refresh_token',
-            refresh_token: refresh_token
-        },
-        json: true
-    };
-  
-    request.post(authOptions, (error, response, body) => {
-        if (!error && response.statusCode === 200) {
-            let access_token = body.access_token;
-            res.cookie("access_token", access_token, { maxAge: 60 * 60 * 1 * 1000 /* 1h */, httpOnly: true, secure: true, SameSite: 'strict' })
+    let tokens
+    try {
+        tokens = await request({
+            method: 'post',
+            url: 'https://accounts.spotify.com/api/token',
+            headers: {
+              Authorization: 'Basic ' + (new Buffer.from(client_id + ':' + client_secret).toString('base64'))
+            },
+            form: {
+                refresh_token,
+                grant_type: 'refresh_token'
+            },
+            json: true
+        })
+    } catch (error) {
+        res.clearCookie("access_token")
+        res.clearCookie("refresh_token")
+        return res.redirect("/")
+    }
+
+    let userInfo = await spotify.getUserInfo(tokens.access_token)
+    if (userInfo.error) {
+        res.clearCookie("access_token")
+        res.clearCookie("refresh_token")
+        return res.redirect("/")
+    }
+
+    res.cookie("access_token", tokens.access_token, { maxAge: 60 * 60 * 1 * 1000 /* 1h */, httpOnly: true, secure: true, SameSite: 'strict' })
             
-            return res.redirect("/")
-        }
-        else {
-            console.log(error)
-            console.log(response.statusCode)
-            // console.log(response)
-            return res.send("error")
-        }
-    });
-});
+    return res.redirect("/")
+})
+
+
+
+
+
+app.get("/test", (req, res) => {
+    res.send({
+        a: "ciao",
+        b: 200,
+        c: true
+    })
+})
 
 
 

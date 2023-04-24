@@ -10,7 +10,8 @@ let artistsTotal
 removeNodes(true)
 
 function apiKeyExpired() {
-    window.location.replace("/refresh_token")
+    console.log("redirect!")
+    // window.location.replace("/refresh_token")
 }
 
 async function spotifyTopTracks(timeRange = 1, createUi = true) {
@@ -151,55 +152,84 @@ async function spotifyTopArtists(timeRange = 1, createUi = true) {
             return
         }
 
-        if (createUi) {
-            for (let i = 0; i < 50/*artists.items.length*/; i++) {
-                let classifiedContainer = document.createElement("div")
-                classifiedContainer.classList.add("classified-container")
-                if (i < artists.items.length)
-                    classifiedContainer.classList.add("before-show")
-                
+        // let genres = []
+        // for (let i = 0; i < artists.items.length; i++) {
+        //     for (let j = 0; j < artists.items[i].genres.length; j++) {
+        //         let genres_contiene_genere = false
+        //         let genere_index
 
-                    let num = document.createElement("div")
-                    num.classList.add("num")
-                    num.innerText = i + 1
-                    classifiedContainer.appendChild(num)
+        //         for (let x = 0; x < genres.length; x++) {
+        //             if (genres[x].genre === artists.items[i].genres[j]) {
+        //                 genres_contiene_genere = true
+        //                 genere_index = x
+        //             }
+        //         }
 
-                    let img = document.createElement("img")
-                    img.classList.add("img")
-                    img.classList.add("no-pointer")
+        //         if (genres_contiene_genere === false) {
+        //             genres.push({
+        //                 genre: artists.items[i].genres[j],
+        //                 num: 1
+        //             })
+        //         } else {
+        //             genres[genere_index].num += 1
+        //         }
+        //     }
+        // }
+    //
+        // genres.sort((a, b) => b.num - a.num);
+        // console.log(genres)
+
+
+        if (!createUi)
+            return artists
+
+        for (let i = 0; i < 50/*artists.items.length*/; i++) {
+            let classifiedContainer = document.createElement("div")
+            classifiedContainer.classList.add("classified-container")
+            if (i < artists.items.length)
+                classifiedContainer.classList.add("before-show")
+            
+
+                let num = document.createElement("div")
+                num.classList.add("num")
+                num.innerText = i + 1
+                classifiedContainer.appendChild(num)
+
+                let img = document.createElement("img")
+                img.classList.add("img")
+                img.classList.add("no-pointer")
+                try {
+                    img.src = artists.items[i].images[0].url
+                } catch (error) {}
+                img.alt = "img"
+                classifiedContainer.appendChild(img)
+
+                let txt = document.createElement("div")
+                txt.classList.add("txt")
+
+                    let title = document.createElement("div")
+                    title.classList.add("title")
                     try {
-                        img.src = artists.items[i].images[0].url
+                        title.innerText = artists.items[i].name
+                        title.addEventListener("click", () => window.open(artists.items[i].external_urls.spotify))
+                        title.title = `Song name: ${artists.items[i].name}`
                     } catch (error) {}
-                    img.alt = "img"
-                    classifiedContainer.appendChild(img)
+                    txt.appendChild(title)
 
-                    let txt = document.createElement("div")
-                    txt.classList.add("txt")
-
-                        let title = document.createElement("div")
-                        title.classList.add("title")
-                        try {
-                            title.innerText = artists.items[i].name
-                            title.addEventListener("click", () => window.open(artists.items[i].external_urls.spotify))
-                            title.title = `Song name: ${artists.items[i].name}`
-                        } catch (error) {}
-                        txt.appendChild(title)
-
-                        let artist = document.createElement("div")
-                        artist.classList.add("artist")
-                        artist.classList.add("no-pointer")
-                        try {
-                            artist.innerText = `Popularity: ${artists.items[i].popularity}%`
-                        } catch (error) {}
-                        txt.appendChild(artist)
+                    let artist = document.createElement("div")
+                    artist.classList.add("artist")
+                    artist.classList.add("no-pointer")
+                    try {
+                        artist.innerText = `Popularity: ${artists.items[i].popularity}%`
+                    } catch (error) {}
+                    txt.appendChild(artist)
                     
-                    classifiedContainer.appendChild(txt)
+                classifiedContainer.appendChild(txt)
 
-                if (i >= artists.items.length)
-                    classifiedContainer.classList.add("fade")
+            if (i >= artists.items.length)
+                classifiedContainer.classList.add("fade")
                     
-                document.getElementById("artists-container").appendChild(classifiedContainer)
-            }
+            document.getElementById("artists-container").appendChild(classifiedContainer)
         }
 
         return artists
@@ -378,29 +408,32 @@ for (let i = 0; i < 3; i++) {
     })
 }
 
-(async () => {
-    let myHeaders = new Headers();
-    myHeaders.append("Content-Type", "application/json");
-    myHeaders.append("Authorization", `Bearer  ${APIKey}`);
+(() => {
+    // let myHeaders = new Headers();
+    // myHeaders.append("Content-Type", "application/json");
+    // myHeaders.append("Authorization", `Bearer  ${APIKey}`);
 
-    const result = await fetch(`https://api.spotify.com/v1/me`, {
-        method: 'GET',
-        headers: myHeaders,
-        redirect: "follow"
-    })
+    // const result = await fetch(`https://api.spotify.com/v1/me`, { //leva sta chiamata
+    //     method: 'GET',
+    //     headers: myHeaders,
+    //     redirect: "follow"
+    // })
 
-    if (result.status != 200) {
-        if (result.status == 401) {
-            apiKeyExpired()
-            return
-        }
-        console.log("errore")
-        console.log(await result.text())
+    // if (result.status != 200) {
+    //     if (result.status == 401) {
+    //         console.log(APIKey)
+    //         console.log(await result.json())
+    //         apiKeyExpired()
+    //         return
+    //     }
+    //     console.log("errore")
+    //     console.log(await result.text())
 
-        return
-    }
+    //     return
+    // }
 
-    const resultJ = await result.json()
+    const resultJ = JSON.parse(document.getElementById("hidden-user-info").innerText); document.getElementById("hidden-user-info").remove()
+    console.log(resultJ)
 
     document.getElementById("name").innerHTML = `Brani e artisti preferiti di ${resultJ.display_name}!`
 
