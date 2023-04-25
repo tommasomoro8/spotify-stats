@@ -112,6 +112,8 @@ async function spotifyTopTracks(timeRange = 1, createUi = true) {
             } 
         }
 
+        console.log("tracks")
+        console.log(JSON.stringify(tracks))
         return tracks
     // } catch (error) {
     //     console.log(error)
@@ -152,32 +154,33 @@ async function spotifyTopArtists(timeRange = 1, createUi = true) {
             return
         }
 
-        // let genres = []
-        // for (let i = 0; i < artists.items.length; i++) {
-        //     for (let j = 0; j < artists.items[i].genres.length; j++) {
-        //         let genres_contiene_genere = false
-        //         let genere_index
+        let genres = []
+        for (let i = 0; i < artists.items.length; i++) {
+            for (let j = 0; j < artists.items[i].genres.length; j++) {
+                let genres_contiene_genere = false
+                let genere_index
 
-        //         for (let x = 0; x < genres.length; x++) {
-        //             if (genres[x].genre === artists.items[i].genres[j]) {
-        //                 genres_contiene_genere = true
-        //                 genere_index = x
-        //             }
-        //         }
+                for (let x = 0; x < genres.length; x++) {
+                    if (genres[x].genre === artists.items[i].genres[j]) {
+                        genres_contiene_genere = true
+                        genere_index = x
+                    }
+                }
 
-        //         if (genres_contiene_genere === false) {
-        //             genres.push({
-        //                 genre: artists.items[i].genres[j],
-        //                 num: 1
-        //             })
-        //         } else {
-        //             genres[genere_index].num += 1
-        //         }
-        //     }
-        // }
-    //
-        // genres.sort((a, b) => b.num - a.num);
-        // console.log(genres)
+                if (genres_contiene_genere === false) {
+                    genres.push({
+                        genre: artists.items[i].genres[j],
+                        num: 1
+                    })
+                } else {
+                    genres[genere_index].num += 1
+                }
+            }
+        }
+    
+        genres.sort((a, b) => b.num - a.num);
+        console.log("genres")
+        console.log(JSON.stringify(genres))
 
 
         if (!createUi)
@@ -232,6 +235,8 @@ async function spotifyTopArtists(timeRange = 1, createUi = true) {
             document.getElementById("artists-container").appendChild(classifiedContainer)
         }
 
+        console.log("artists")
+        console.log(JSON.stringify(artists))
         return artists
     // } catch (error) {
     //     console.log(error)

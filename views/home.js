@@ -16,7 +16,6 @@ module.exports = (userInfo, friendList, invitedList, invitedByList, access_token
     </head>
     <body>
         <p>ciao ${String(userInfo.display_name)}!<br>
-        <a href="/result">Vai alla tua classifica</a>
         <br><br>Le classifiche dei tuoi amici:<br></p>
 
         <div>${(() => {
@@ -405,6 +404,8 @@ module.exports = (userInfo, friendList, invitedList, invitedByList, access_token
         }
 
         </style>
+
+        <a href="/python-script-download">Scarica script python</a>
 
         <div id="hidden-access-token">${access_token}</div>
         <div id="hidden-user-info">${JSON.stringify(userInfo)}</div>

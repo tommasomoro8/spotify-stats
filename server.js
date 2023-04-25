@@ -22,6 +22,9 @@ const resultpage = require('./views/result')
 const landingpage = require('./views/landing')
 const homepage = require('./views/home')
 
+/* downloads */
+const pythonscript = require('./downloads/python-script')
+
 /* middleware */
 const secureHttps = require("./middleware/secureHttps")
 
@@ -122,7 +125,6 @@ app.get('/login', (req, res) => {
 })
 
 
-
 app.get('/callback', async (req, res) => {
     const code = req.query.code || null;
     const state = req.query.state || null;
@@ -163,9 +165,8 @@ app.get('/callback', async (req, res) => {
 })
 
 
-
 app.get('/refresh_token', async (req, res) => {
-    const refresh_token = req.query.refresh_token || req.cookies.refresh_token
+    const refresh_token = req.cookies.refresh_token || req.query.refresh_token
 
     let tokens
     try {
@@ -182,25 +183,58 @@ app.get('/refresh_token', async (req, res) => {
             json: true
         })
     } catch (error) {
-        res.clearCookie("access_token")
-        res.clearCookie("refresh_token")
+        if (req.query.result !== "string") {
+            res.clearCookie("access_token")
+            res.clearCookie("refresh_token")
+        }
+
+        if (req.query.result === "string")
+            return res.sendStatus(401)
+
         return res.redirect("/")
     }
 
     let userInfo = await spotify.getUserInfo(tokens.access_token)
     if (userInfo.error) {
-        res.clearCookie("access_token")
-        res.clearCookie("refresh_token")
+        if (req.query.result !== "string") {
+            res.clearCookie("access_token")
+            res.clearCookie("refresh_token")
+        }
+
+        if (req.query.result === "string")
+            return res.sendStatus(401)
+
         return res.redirect("/")
     }
 
-    res.cookie("access_token", tokens.access_token, { maxAge: 60 * 60 * 1 * 1000 /* 1h */, httpOnly: true, secure: true, SameSite: 'strict' })
+    if (req.query.result !== "string")
+        res.cookie("access_token", tokens.access_token, { maxAge: 60 * 60 * 1 * 1000 /* 1h */, httpOnly: true, secure: true, SameSite: 'strict' })
             
     if (req.query.then)
         return res.redirect("/"+req.query.then)
 
+    if (req.query.result === "string")
+        return res.send(tokens.access_token)
+    
     return res.redirect("/")
 })
+
+
+app.get("/python-script-download", async (req, res) => {
+    const access_token = req.cookies.access_token
+    const refresh_token = req.cookies.refresh_token
+
+    let userInfo = await spotify.getUserInfo(access_token, refresh_token)
+    if (userInfo.error) {
+        res.clearCookie("access_token")
+        return res.redirect(`/refresh_token?then=python-script-download`)
+    }
+
+    res.status(200)
+        .attachment(`spotifystats.py`)
+        .send(pythonscript(refresh_token, userInfo))
+})
+
 
 app.get('/:friendId', async (req, res) => {
     const friendId = req.params.friendId
@@ -272,4 +306,4 @@ app.use((err, req, res, next) => {
 const port = process.env.PORT || 3000
 app.listen(port, () => {
     console.log(`listening on port ${port} in ${app.get("env")} mode...`)
-}) //export NODE_ENV=production or development
+})

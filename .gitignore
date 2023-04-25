@@ -114,6 +114,3 @@ node_modules
 
 #macOS
 .DS_Store
-
-#test
-test.txt
