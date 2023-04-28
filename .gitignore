@@ -114,3 +114,7 @@ node_modules
 
 #macOS
 .DS_Store
+
+oldapp.js
+oldhome.js
+oldstyle.css

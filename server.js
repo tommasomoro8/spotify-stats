@@ -1,9 +1,15 @@
 const querystring = require("querystring")
 const request = require("request-promise-native")
 const cookieParser = require("cookie-parser")
+const cookie = require("cookie")
 
 const express = require("express")
 const app = express()
+
+const http = require('http')
+const server = http.createServer(app)
+const { Server } = require("socket.io")
+const io = new Server(server)
 
 const dev = app.get("env") === 'development'
 
@@ -27,6 +33,7 @@ const pythonscript = require('./downloads/python-script')
 
 /* middleware */
 const secureHttps = require("./middleware/secureHttps")
+const { async } = require("@firebase/util")
 
 const client_id = process.env.CLIENT_ID_SPOTIFY;
 const client_secret = process.env.CLIENT_SECRET_SPOTIFY;
@@ -61,52 +68,8 @@ app.get("/", async (req, res) => {
         return res.redirect("/refresh_token")
     }
 
-    let friendL = []
-    let invitedL = []
-    let invitedByL = []
-    let index = 0
-
-    function sendResponse() {
-        if (friendL === undefined || invitedL === undefined || invitedByL === undefined)
-            return res.status(500).send("retrieve friends error")
-
-        res.setHeader("Content-Type", "text/html")
-        res.send(homepage(userInfo, friendL, invitedL, invitedByL, access_token))
-    }
-
-    friendList(userInfo, (_friends) => {
-        index++
-
-        if (_friends.error)
-            friendL = undefined
-
-        friendL = _friends
-
-        if (index === 3) 
-            sendResponse()
-    })
-    invitedList(userInfo, (_invited) => {
-        index++
-        
-        if (_invited.error)
-            invitedL = undefined
-
-        invitedL = _invited
-        
-        if (index === 3)
-            sendResponse()
-    })
-    invitedByList(userInfo, (_invitedBy) => {
-        index++
-        
-        if (_invitedBy.error)
-            invitedByL = undefined
-
-        invitedByL = _invitedBy
-
-        if (index === 3) 
-            sendResponse()
-    })
+    res.setHeader("Content-Type", "text/html")
+    res.send(homepage(userInfo, access_token))
 })
 
 
@@ -158,8 +121,8 @@ app.get('/callback', async (req, res) => {
         return res.redirect("/refresh_token")
     }
 
-    res.cookie("access_token", tokens.access_token, { maxAge: 60 * 60 * 1 * 1000 /* 1h */, httpOnly: true, secure: true, SameSite: 'strict' })
-    res.cookie("refresh_token", tokens.refresh_token, { maxAge: 60 * 60 * 87600 * 1000 /* 1y */, httpOnly: true, secure: true, SameSite: 'strict' })
+    res.cookie("access_token", tokens.access_token, { maxAge: 60 * 60 * 1 * 1000 /* 1h */, httpOnly: true, secure: !dev, SameSite: 'strict' })
+    res.cookie("refresh_token", tokens.refresh_token, { maxAge: 60 * 60 * 87600 * 1000 /* 1y */, httpOnly: true, secure: !dev, SameSite: 'strict' })
 
     return res.redirect("/")
 })
@@ -208,7 +171,7 @@ app.get('/refresh_token', async (req, res) => {
     }
 
     if (req.query.result !== "string")
-        res.cookie("access_token", tokens.access_token, { maxAge: 60 * 60 * 1 * 1000 /* 1h */, httpOnly: true, secure: true, SameSite: 'strict' })
+        res.cookie("access_token", tokens.access_token, { maxAge: 60 * 60 * 1 * 1000 /* 1h */, httpOnly: true, secure: !dev, SameSite: 'strict' })
             
     if (req.query.then)
         return res.redirect("/"+req.query.then)
@@ -233,6 +196,155 @@ app.get("/python-script-download", async (req, res) => {
     res.status(200)
         .attachment(`spotifystats.py`)
         .send(pythonscript(refresh_token, userInfo))
+})
+
+
+io.on('connection', async socket => {
+    let userInfo = await spotify.getUserInfo(cookie.parse(socket.handshake.headers.cookie).access_token)
+    if (userInfo.error)
+        socket.disconnect()
+
+    const notificationsObserver = db.collection('users').doc(userInfo.id).collection("notifications").onSnapshot(querySnapshot => {
+        if (querySnapshot.empty)
+            return socket.emit("notifications", [])
+    
+        let notifications = []
+    
+        querySnapshot.forEach(notification => {
+            let notificationObj = notification.data()
+            notificationObj.id = notification.id
+            notifications.push(notificationObj)
+        })
+
+        socket.emit("notifications", notifications)
+    }, error => {
+        console.log(`Encountered error: ${error}`)
+        socket.emit("notifications", "internal error")
+    })
+
+    const friendsObserver = db.collection('users').doc(userInfo.id).collection("friends").onSnapshot(querySnapshot => {
+        if (querySnapshot.empty)
+            return socket.emit("friends", [])
+            
+        let friends = []
+        const size = querySnapshot._size
+        let index = 0
+    
+        querySnapshot.forEach(async doc => {
+            index++
+
+            let friend
+            try {
+                friend = await db.collection('users').doc(doc.id).get();
+            } catch (error) {
+                console.log("error get friend", error)
+                socket.emit("friends", "internal error")
+            }
+
+            if (!friend.exists) {
+                console.log("error friend !exists")
+                socket.emit("friends", "internal error")
+            }
+
+            const friendData = friend.data()
+            friendData.id = doc.id
+            
+            friends.push(friendData)
+
+            if (size === index)
+                socket.emit("friends", friends)
+        })
+    }, error => {
+        console.log(`Encountered error: ${error}`)
+        socket.emit("friends", "internal error")
+    })
+
+    const friendsInvitedObserver = db.collection('users').doc(userInfo.id).collection("friend-invited").onSnapshot(querySnapshot => {
+        if (querySnapshot.empty)
+            return socket.emit("friendsInvited", [])
+
+        let friends = []
+        const size = querySnapshot._size
+        let index = 0
+
+        querySnapshot.forEach(async doc => {
+            index++
+
+            let friend
+            try {
+                friend = await db.collection('users').doc(doc.id).get();
+            } catch (error) {
+                console.log("error get friend", error)
+                socket.emit("friendsInvited", "internal error")
+            }
+
+            if (!friend.exists) {
+                console.log("error friend !exists")
+                socket.emit("friendsInvited", "internal error")
+            }
+
+            const friendData = friend.data()
+            friendData.id = doc.id
+            delete friendData.refresh_token
+            delete friendData.lastAccess
+            delete friendData.email
+            
+            friends.push(friendData)
+
+            if (size === index)
+                socket.emit("friendsInvited", friends)
+        })
+    }, error => {
+        console.log(`Encountered error: ${error}`)
+        socket.emit("friendsInvited", "internal error")
+    })
+
+    const friendsInvitedByObserver = db.collection('users').doc(userInfo.id).collection("friend-invited-by").onSnapshot(querySnapshot => {
+        if (querySnapshot.empty)
+            return socket.emit("friendsInvitedBy", [])
+
+        let friends = []
+        const size = querySnapshot._size
+        let index = 0
+
+        querySnapshot.forEach(async doc => {
+            index++
+
+            let friend
+            try {
+                friend = await db.collection('users').doc(doc.id).get();
+            } catch (error) {
+                console.log("error get friend", error)
+                socket.emit("friendsInvitedBy", "internal error")
+            }
+
+            if (!friend.exists) {
+                console.log("error friend !exists")
+                socket.emit("friendsInvitedBy", "internal error")
+            }
+
+            const friendData = friend.data()
+            friendData.id = doc.id
+            delete friendData.refresh_token
+            delete friendData.lastAccess
+            delete friendData.email
+            
+            friends.push(friendData)
+
+            if (size === index)
+                socket.emit("friendsInvitedBy", friends)
+        })
+    }, error => {
+        console.log(`Encountered error: ${error}`)
+        socket.emit("friendsInvitedBy", "internal error")
+    })
+    
+    socket.on('disconnect', () => {
+        notificationsObserver()
+        friendsObserver()
+        friendsInvitedObserver()
+        friendsInvitedByObserver()
+    })
 })
 
 
@@ -304,6 +416,6 @@ app.use((err, req, res, next) => {
 })
 
 const port = process.env.PORT || 3000
-app.listen(port, () => {
+server.listen(port, () => {
     console.log(`listening on port ${port} in ${app.get("env")} mode...`)
 })

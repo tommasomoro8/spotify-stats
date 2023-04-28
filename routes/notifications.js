@@ -3,7 +3,8 @@ const spotify = require("../services/spotify")
 
 const express = require("express")
 const router = express.Router()
-
+/*
+//DA LEVARE
 router.get("/list", async (req, res) => {
     const access_token = req.cookies.access_token
 
@@ -20,7 +21,7 @@ router.get("/list", async (req, res) => {
 
     res.send(notifications)
 })
-
+*/
 router.post("/delete/:notificationId", async (req, res) => {
     const access_token = req.cookies.access_token
     const notificationId = req.params.notificationId

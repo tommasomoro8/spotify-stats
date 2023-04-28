@@ -19,7 +19,7 @@ async function friendList(userInfo, callback = () => {}) {
     }
     
     if (!snapshot.empty) {
-        let size = snapshot._size
+        const size = snapshot._size
         let index = 0
 
         snapshot.forEach(async doc => {
@@ -64,7 +64,7 @@ async function invitedList(userInfo, callback = () => {}) {
     }
     
     if (!snapshot.empty) {
-        let size = snapshot._size
+        const size = snapshot._size
         let index = 0
 
         snapshot.forEach(async doc => {
@@ -112,7 +112,7 @@ async function invitedByList(userInfo, callback = () => {}) {
     }
     
     if (!snapshot.empty) {
-        let size = snapshot._size
+        const size = snapshot._size
         let index = 0
 
         snapshot.forEach(async doc => {
@@ -442,8 +442,8 @@ router.post("/invite-decline/:user", async (req, res) => {
 
     res.send("done")
 })
-
-
+/*
+//DA LEVARE
 router.get("/list", async (req, res) => {
     let access_token = req.cookies.access_token
 
@@ -461,7 +461,7 @@ router.get("/list", async (req, res) => {
     })
 })
 
-
+//DA LEVARE
 router.get("/invited-list", async (req, res) => { //chi ho invitato io a essere mio amico
     let access_token = req.cookies.access_token
 
@@ -479,7 +479,7 @@ router.get("/invited-list", async (req, res) => { //chi ho invitato io a essere 
     })
 })
 
-
+//DA LEVARE
 router.get("/invited-by-list", async (req, res) => { //chi mi ha invitato a essere suo amico
     let access_token = req.cookies.access_token
 
@@ -496,6 +496,6 @@ router.get("/invited-by-list", async (req, res) => { //chi mi ha invitato a esse
         res.send(friends)
     })
 })
-
+*/
 
 module.exports = { router, friendList, invitedList, invitedByList }

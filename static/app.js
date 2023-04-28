@@ -1,452 +1,605 @@
-// if (innerHeight > innerWidth) {
-//     document.body.style.zoom = "40%";
-// }
+const access_token = document.getElementById("hidden-access-token").innerText; document.getElementById("hidden-access-token").remove()
 
 const timeRanges = [/* 1m */"short_term", /* 6m */"medium_term", /* all */"long_term"]
-const APIKey = document.getElementById("hidden-access-token").innerText; document.getElementById("hidden-access-token").remove()
-let timeRange
-let tracksTotal
-let artistsTotal
-removeNodes(true)
+
+const onemonth = document.getElementById("onemonth")
+const sixmonth = document.getElementById("sixmonth")
+const ever = document.getElementById("ever")
+const buttons = [onemonth, sixmonth, ever]
+const selectorBg = document.getElementById("selector-selected")
+
+let selected = 0
+let oldClassName = selectorBg.className
+
+onemonth.addEventListener("mouseenter", () => {
+    selectorBg.className = ""
+    onemonth.classList.add("green")
+    if (selected !== 0)
+        buttons[selected].classList.remove("green")
+})
+sixmonth.addEventListener("mouseenter", () => {
+    if (selected === 2)
+        selectorBg.classList.remove("two")
+
+    selectorBg.classList.add("one")
+    sixmonth.classList.add("green")
+    if (selected !== 1)
+        buttons[selected].classList.remove("green")
+})
+ever.addEventListener("mouseenter", () => {
+    selectorBg.classList.add("two")
+    ever.classList.add("green")
+    if (selected !== 2)
+        buttons[selected].classList.remove("green")
+})
+
+onemonth.addEventListener("mouseleave", () => {
+    selectorBg.className = oldClassName
+    if (selected !== 0) {
+        buttons[selected].classList.add("green")
+        onemonth.classList.remove("green")
+    }
+})
+sixmonth.addEventListener("mouseleave", () => {
+    selectorBg.className = oldClassName
+    if (selected !== 1) {
+        buttons[selected].classList.add("green")
+        sixmonth.classList.remove("green")
+    }
+})
+ever.addEventListener("mouseleave", () => {
+    selectorBg.className = oldClassName
+    if (selected !== 2) {
+        buttons[selected].classList.add("green")
+        ever.classList.remove("green")
+    }
+})
+
+onemonth.addEventListener("click", () => {
+    selected = 0
+    oldClassName = selectorBg.className
+
+    document.getElementById("genre-subtitle-text").innerText = "I tuoi generi preferiti nelle ultime 4 settimane"
+    document.getElementById("track-subtitle-text").innerText = "Le tue canzoni preferite nelle ultime 4 settimane"
+    document.getElementById("artist-subtitle-text").innerText = "I tuoi artisti preferiti nelle ultime 4 settimane"
+    document.getElementById("last-stream-subtitle-text").innerText = "I tuoi brani riprodotti di recente"
+    
+    displayResult(0)
+})
+sixmonth.addEventListener("click", () => {
+    selected = 1
+    oldClassName = selectorBg.className
+
+    document.getElementById("genre-subtitle-text").innerText = "I tuoi generi preferiti negli ultimi 6 mesi"
+    document.getElementById("track-subtitle-text").innerText = "Le tue canzoni preferite negli ultimi 6 mesi"
+    document.getElementById("artist-subtitle-text").innerText = "I tuoi artisti preferiti negli ultimi 6 mesi"
+    document.getElementById("last-stream-subtitle-text").innerText = "I tuoi brani riprodotti di recente"
+
+    displayResult(1)
+})
+ever.addEventListener("click", () => {
+    selected = 2
+    oldClassName = selectorBg.className
+
+    document.getElementById("genre-subtitle-text").innerText = "I tuoi generi preferiti di sempre"
+    document.getElementById("track-subtitle-text").innerText = "Le tue canzoni preferite di sempre"
+    document.getElementById("artist-subtitle-text").innerText = "I tuoi artisti preferiti di sempre"
+    document.getElementById("last-stream-subtitle-text").innerText = "I tuoi brani riprodotti di recente"
+
+    displayResult(2)
+})
+
+
+let isLateralBarOpen = false
+
+function open_close_top_bar() {
+    if (isLateralBarOpen) {
+        document.getElementById("lateral-bar").classList.remove("active")
+        document.getElementById("lateral-bar-overlay").classList.remove("active")
+    }
+    else {
+        document.getElementById("lateral-bar").classList.add("active")
+        document.getElementById("lateral-bar-overlay").classList.add("active")
+    }
+
+    isLateralBarOpen = !isLateralBarOpen
+}
+document.getElementById("top-bar-userimg").addEventListener("click", open_close_top_bar)
+document.getElementById("lateral-bar-overlay").addEventListener("click", open_close_top_bar)
+
+
+// function resize_lateral_menu() {
+//     console.log("ciao")
+//     document.getElementById("lateral-bar-overlay").style.height = document.getElementsByTagName("main")[0].offsetHeight + "px"
+//     document.getElementById("lateral-bar").style.height = document.getElementsByTagName("main")[0].offsetHeight + "px"
+// } resize_lateral_menu()
+// window.addEventListener("resize", () => resize_lateral_menu)
+// document.getElementsByTagName("main")[0].addEventListener("resize", () => {
+//     console.log("ao")
+// });
 
 function apiKeyExpired() {
-    console.log("redirect!")
-    // window.location.replace("/refresh_token")
+    window.location.replace("/refresh_token")
 }
 
-async function spotifyTopTracks(timeRange = 1, createUi = true) {
-    if (timeRange < 0 || timeRange > 2 || isNaN(timeRange))
-        return new Error("timeRange not accepted")
 
-    let myHeaders = new Headers();
-    myHeaders.append("Content-Type", "application/json");
-    myHeaders.append("Authorization", `Bearer  ${APIKey}`);
+function placeholders_set() {
+    document.getElementById("genre-scrolls").innerHTML = ""
+    document.getElementById("track-scrolls").innerHTML = ""
+    document.getElementById("artist-scrolls").innerHTML = ""
+    document.getElementById("last-stream").innerHTML = ""
 
-    const postURL = `https://api.spotify.com/v1/me/top/tracks?limit=50&time_range=${timeRanges[timeRange]}`
-
-    // try {
-        const result = await fetch(postURL, {
-            method: 'GET',
-            headers: myHeaders,
-            redirect: "follow"
-        })
-
-        if (result.status != 200) {
-            if (result.status == 401) {
-                apiKeyExpired()
-                return
-            }
-            console.log("errore")
-            console.log(await result.text())
-            return
-        }
-
-        const tracks = await result.json()
-
-        if (tracks.total === 0) {
-            alert("Non hai tracce preferite")
-            return
-        }
-
-        if (createUi) {
-            for (let i = 0; i < 50/*tracks.items.length*/; i++) {
-                let classifiedContainer = document.createElement("div")
-                classifiedContainer.classList.add("classified-container")
-                if (i < tracks.items.length)
-                    classifiedContainer.classList.add("before-show")
-
-                    let num = document.createElement("div")
-                    num.classList.add("num")
-                    num.innerText = i + 1
-                    // if (i == 0)
-                    //     num.style.color = "#ffd700"//gold
-                    // else if (i == 1)
-                    //     num.style.color = "#c0c0c0"//silver
-                    // else if (i == 2)
-                    //     num.style.color = "#CD7F32"//bronze
-                    classifiedContainer.appendChild(num)
-
-                    let img = document.createElement("img")
-                    img.classList.add("img")
-                    try {
-                        img.src = tracks.items[i].album.images[0].url
-                    } catch (error) {}
-                    img.alt = "img"
-                    try {
-                        img.addEventListener("click", () => window.open(tracks.items[i].album.external_urls.spotify))
-                        img.title = `Album name: ${tracks.items[i].album.name}`
-                    } catch (error) {}
-                    classifiedContainer.appendChild(img)
-
-                    let txt = document.createElement("div")
-                    txt.classList.add("txt")
-
-                        let title = document.createElement("div")
-                        title.classList.add("title")
-                        try {
-                            title.innerText = tracks.items[i].name
-                            title.addEventListener("click", () => window.open(tracks.items[i].external_urls.spotify))
-                            title.title = `Song name: ${tracks.items[i].name}`
-                        } catch (error) {}
-                        txt.appendChild(title)
-
-                        let artist = document.createElement("div")
-                        artist.classList.add("artist")
-                        try {
-                            for (let j = 0; j < tracks.items[i].artists.length; j++)
-                                if (j == 0)
-                                    artist.innerText = tracks.items[i].artists[0].name
-                                else
-                                    artist.innerText += `, ${tracks.items[i].artists[j].name}`
-                            artist.addEventListener("click", () => window.open(tracks.items[i].artists[0].external_urls.spotify))
-                            artist.title = `Artist name: ${tracks.items[i].artists[0].name}`
-                        } catch (error) {}
-                        txt.appendChild(artist)
-                    
-                    classifiedContainer.appendChild(txt)
-
-                    if (i >= tracks.items.length)
-                        classifiedContainer.classList.add("fade")
-                    
-                document.getElementById("traks-container").appendChild(classifiedContainer)
-            } 
-        }
-
-        console.log("tracks")
-        console.log(JSON.stringify(tracks))
-        return tracks
-    // } catch (error) {
-    //     console.log(error)
-    // }
-}
-
-async function spotifyTopArtists(timeRange = 1, createUi = true) {
-    if (timeRange < 0 || timeRange > 2 || isNaN(timeRange))
-        return new Error("timeRange not accepted")
-
-    let myHeaders = new Headers();
-    myHeaders.append("Content-Type", "application/json");
-    myHeaders.append("Authorization", `Bearer  ${APIKey}`);
-
-    const postURL = `https://api.spotify.com/v1/me/top/artists?limit=50&time_range=${timeRanges[timeRange]}`
-
-    // try {
-        const result = await fetch(postURL, {
-            method: 'GET',
-            headers: myHeaders,
-            redirect: "follow"
-        })
-
-        if (result.status != 200) {
-            if (result.status == 401) {
-                apiKeyExpired()
-                return
-            }
-            console.log("errore")
-            console.log(await result.text())
-            return
-        }
-
-        const artists = await result.json()
-
-        if (artists.total === 0) {
-            alert("Non hai artisti preferiti")
-            return
-        }
-
-        let genres = []
-        for (let i = 0; i < artists.items.length; i++) {
-            for (let j = 0; j < artists.items[i].genres.length; j++) {
-                let genres_contiene_genere = false
-                let genere_index
-
-                for (let x = 0; x < genres.length; x++) {
-                    if (genres[x].genre === artists.items[i].genres[j]) {
-                        genres_contiene_genere = true
-                        genere_index = x
-                    }
-                }
-
-                if (genres_contiene_genere === false) {
-                    genres.push({
-                        genre: artists.items[i].genres[j],
-                        num: 1
-                    })
-                } else {
-                    genres[genere_index].num += 1
-                }
-            }
-        }
-    
-        genres.sort((a, b) => b.num - a.num);
-        console.log("genres")
-        console.log(JSON.stringify(genres))
-
-
-        if (!createUi)
-            return artists
-
-        for (let i = 0; i < 50/*artists.items.length*/; i++) {
-            let classifiedContainer = document.createElement("div")
-            classifiedContainer.classList.add("classified-container")
-            if (i < artists.items.length)
-                classifiedContainer.classList.add("before-show")
-            
-
-                let num = document.createElement("div")
-                num.classList.add("num")
-                num.innerText = i + 1
-                classifiedContainer.appendChild(num)
-
-                let img = document.createElement("img")
-                img.classList.add("img")
-                img.classList.add("no-pointer")
-                try {
-                    img.src = artists.items[i].images[0].url
-                } catch (error) {}
-                img.alt = "img"
-                classifiedContainer.appendChild(img)
-
-                let txt = document.createElement("div")
-                txt.classList.add("txt")
-
-                    let title = document.createElement("div")
-                    title.classList.add("title")
-                    try {
-                        title.innerText = artists.items[i].name
-                        title.addEventListener("click", () => window.open(artists.items[i].external_urls.spotify))
-                        title.title = `Song name: ${artists.items[i].name}`
-                    } catch (error) {}
-                    txt.appendChild(title)
-
-                    let artist = document.createElement("div")
-                    artist.classList.add("artist")
-                    artist.classList.add("no-pointer")
-                    try {
-                        artist.innerText = `Popularity: ${artists.items[i].popularity}%`
-                    } catch (error) {}
-                    txt.appendChild(artist)
-                    
-                classifiedContainer.appendChild(txt)
-
-            if (i >= artists.items.length)
-                classifiedContainer.classList.add("fade")
-                    
-            document.getElementById("artists-container").appendChild(classifiedContainer)
-        }
-
-        console.log("artists")
-        console.log(JSON.stringify(artists))
-        return artists
-    // } catch (error) {
-    //     console.log(error)
-    // }
-}
-
-async function showUI() {
-
-    const tracks = await spotifyTopTracks(timeRange)
-    console.log(tracks)
-    tracksTotal = tracks.total
-
-
-    const artists = await spotifyTopArtists(timeRange)
-    console.log(artists)
-    artistsTotal = artists.total
-
-    for (let i = 0; i < tracks.total; i++) {
-        setTimeout(() => {
-            try {
-                document.getElementsByClassName("classified-container")[i].classList.remove("before-show")
-            } catch (error) {}
-        }, 1000 + i*100);
+    //genre-scrolls
+    for (let i = 0; i < 30; i++) {
+        const div = document.createElement("div")
+        div.classList.add("genre", "placeholder")
+        if (i === 0)
+            div.classList.add("genre-first")
+        else if (i === 29)
+            div.classList.add("genre-last")
 
         
+            const div2 = document.createElement("div")
+            div2.classList.add("genre-text", "placeholder")
+            div.appendChild(div2)
+
+        document.getElementById("genre-scrolls").appendChild(div)
     }
 
-    for (let i = 0; i < artists.total; i++) {
-        setTimeout(() => {
-            try {
-                document.getElementsByClassName("classified-container")[i+tracks.total].classList.remove("before-show")
-            } catch (error) {}
-        }, 1500 + i*100);
+    //track-scrolls
+    for (let i = 0; i < 30; i++) {
+        const div = document.createElement("div")
+        div.classList.add("track", "placeholder")
+        if (i === 0)
+            div.classList.add("track-first")
+        else if (i === 29)
+            div.classList.add("track-last")
+
+        
+            const img = document.createElement("div")
+            img.classList.add("track-img", "placeholder")
+
+                const imgAnimation = document.createElement("div")
+                imgAnimation.classList.add("track-img-animation-placeholder")
+                img.appendChild(imgAnimation)
+                
+            div.appendChild(img)
+
+            const title = document.createElement("div")
+            title.classList.add("track-title", "placeholder")
+                
+                const titleAnimation = document.createElement("div")
+                titleAnimation.classList.add("track-img-animation-placeholder")
+                title.appendChild(titleAnimation)
+                
+            div.appendChild(title)
+
+            const artist = document.createElement("div")
+            artist.classList.add("track-artist", "placeholder")
+
+                const artistAnimation = document.createElement("div")
+                artistAnimation.classList.add("track-img-animation-placeholder")
+                artist.appendChild(artistAnimation)
+                
+            div.appendChild(artist)
+
+        document.getElementById("track-scrolls").appendChild(div)
     }
 
+    //artist-scrolls
+    for (let i = 0; i < 30; i++) {
+        const div = document.createElement("div")
+        div.classList.add("artist", "placeholder")
+        if (i === 0)
+            div.classList.add("artist-first")
+        else if (i === 29)
+            div.classList.add("artist-last")
+
+
+            const img = document.createElement("div")
+            img.classList.add("artist-img", "placeholder")
+
+                const imgAnimation = document.createElement("div")
+                imgAnimation.classList.add("track-img-animation-placeholder")
+                img.appendChild(imgAnimation)
+                
+            div.appendChild(img)
+
+            const title = document.createElement("div")
+            title.classList.add("artist-title", "placeholder")
+                
+                const titleAnimation = document.createElement("div")
+                titleAnimation.classList.add("track-img-animation-placeholder")
+                title.appendChild(titleAnimation)
+                
+            div.appendChild(title)
+
+            const artist = document.createElement("div")
+            artist.classList.add("artist-popularity", "placeholder")
+
+                const artistAnimation = document.createElement("div")
+                artistAnimation.classList.add("track-img-animation-placeholder")
+                artist.appendChild(artistAnimation)
+                
+            div.appendChild(artist)
+
+        document.getElementById("artist-scrolls").appendChild(div)
+    }
+
+    //last-stream
+    const div = document.createElement("div")
+    div.classList.add("last-stream-day-wrapper")
+
+        const div2 = document.createElement("div")
+        div2.classList.add("last-stream-day")
+        div2.innerText = "Oggi"
+        div.appendChild(div2)
+
+
+        for (let i = 0; i < 15; i++) {
+            const div3 = document.createElement("div")
+            div3.classList.add("last-stream-track", "placeholder")
     
+                const left = document.createElement("div")
+                left.classList.add("last-stream-track-left", "placeholder")
+
+                    const img = document.createElement("div")
+                    img.classList.add("last-stream-track-img", "placeholder")
+                        const imgInside = document.createElement("div")
+                        imgInside.classList.add("track-img-animation-placeholder")
+                        img.appendChild(imgInside)
+                    left.appendChild(img)
+
+                    const txt = document.createElement("div")
+                    txt.classList.add("last-stream-track-txt", "placeholder")
+
+                        const title = document.createElement("div")
+                        title.classList.add("last-stream-track-title", "placeholder")
+                            const titleInside = document.createElement("div")
+                            titleInside.classList.add("last-stream-track-placeholder")
+                            title.appendChild(titleInside)
+                        txt.appendChild(title)
+
+                        const titleLonger = document.createElement("div")
+                        titleLonger.classList.add("last-stream-track-title", "placeholder", "longer")
+                            const titleLongerInside = document.createElement("div")
+                            titleLongerInside.classList.add("last-stream-track-placeholder")
+                            titleLonger.appendChild(titleLongerInside)
+                        txt.appendChild(titleLonger)
+
+                    left.appendChild(txt)
+
+                div3.appendChild(left)
+
+                const right = document.createElement("div")
+                right.classList.add("last-stream-track-title", "placeholder")
+
+                    const rightAnimation = document.createElement("div")
+                    rightAnimation.classList.add("last-stream-track-placeholder")
+                    right.appendChild(rightAnimation)
+
+                div3.appendChild(right)
+                
+            div.appendChild(div3)
+        }
+    
+    document.getElementById("last-stream").appendChild(div)
 }
 
-function removeNodes(first = false) {
-    if (!first)
-        console.log("Ok")
 
-    const myNode = document.getElementById("traks-container");
-    while (myNode.firstChild) {
-        myNode.removeChild(myNode.lastChild);
-    }
+async function spotifyTop_artists_tracks_genres_recentlyPlayed(timeRange = 0) {
+    if (timeRange < 0 || timeRange > 2 || isNaN(timeRange))
+        return new Error("timeRange not accepted")
 
-    const myNode2 = document.getElementById("artists-container");
-    while (myNode2.firstChild) {
-        myNode2.removeChild(myNode2.lastChild);
-    }
+    let myHeaders = new Headers();
+    myHeaders.append("Content-Type", "application/json");
+    myHeaders.append("Authorization", `Bearer  ${access_token}`);
 
-    if (!first)
-        showUI()
-}
+    const postURL = [
+        `https://api.spotify.com/v1/me/top/tracks?limit=50&time_range=${timeRanges[timeRange]}`,
+        `https://api.spotify.com/v1/me/top/artists?limit=50&time_range=${timeRanges[timeRange]}`,
+        `https://api.spotify.com/v1/me/player/recently-played?limit=30`,
+    ]
 
-async function removeUI() {
+    let tracks = []
+    let artists = []
+    let genres = []
+    let recentlyPlayed = []
 
-    const tracks = await spotifyTopTracks(timeRange, false)
-    console.log(tracks)
-    tracksTotal = tracks.total
 
-    const artists = await spotifyTopArtists(timeRange, false)
-    console.log(artists)
-    artistsTotal = artists.total
+    for (let i = 0; i < 3; i++) {
+        const result = await fetch(postURL[i], {
+            method: 'GET',
+            headers: myHeaders,
+            redirect: "follow"
+        })
 
-    for (let i = 0; i < tracksTotal; i++) {
-        setTimeout(() => {
-            if (i < tracksTotal) {
-                try {
-                    document.getElementsByClassName("classified-container")[i].classList.add("fade")
-                    setTimeout(() => {
-    
-                        const oldImg = document.getElementsByClassName("classified-container")[i].getElementsByClassName("img")[0]
-                        const img = oldImg.cloneNode(true);
-                        oldImg.parentNode.replaceChild(img, oldImg);
-    
-                        const oldTitle = document.getElementsByClassName("classified-container")[i].getElementsByClassName("title")[0]
-                        const title = oldTitle.cloneNode(true);
-                        oldTitle.parentNode.replaceChild(title, oldTitle);
-    
-                        const oldArtist = document.getElementsByClassName("classified-container")[i].getElementsByClassName("artist")[0]
-                        const artist = oldArtist.cloneNode(true);
-                        oldArtist.parentNode.replaceChild(artist, oldArtist);
-    
-    
-                        img.src = tracks.items[i].album.images[0].url
-                        img.addEventListener("click", () => window.open(tracks.items[i].album.external_urls.spotify))
-                        img.title = `Album name: ${tracks.items[i].album.name}`
-    
-                        title.innerText = tracks.items[i].name
-                        title.addEventListener("click", () => window.open(tracks.items[i].external_urls.spotify))
-                        title.title = `Song name: ${tracks.items[i].name}`
-    
-                        for (let j = 0; j < tracks.items[i].artists.length; j++)
-                            if (j == 0)
-                                artist.innerText = tracks.items[i].artists[0].name
-                            else
-                                artist.innerText += `, ${tracks.items[i].artists[j].name}`
-                        artist.addEventListener("click", () => window.open(tracks.items[i].artists[0].external_urls.spotify))
-                        artist.title = `Artist name: ${tracks.items[i].artists[0].name}`
-    
-                        document.getElementsByClassName("classified-container")[i].classList.remove("fade")
-                    }, 1000)
-                } catch (error) {}
+        if (result.status != 200) {
+            if (result.status == 401) {
+                apiKeyExpired()
+                return
             }
-            else {
-                try {
-                    document.getElementsByClassName("classified-container")[i].classList.add("fade")
-                } catch (error) {}
+            return {
+                error: await result.text()
             }
-        }, 0 + i*100);
-    }
+        }
 
-    for (let i = 0; i < 50; i++) {
-        setTimeout(() => {
-            if (i < artistsTotal) {
-                try {
-                    document.getElementsByClassName("classified-container")[i+tracksTotal].classList.add("fade")
-                    setTimeout(() => {
-    
-                        const oldImg = document.getElementsByClassName("classified-container")[i+tracksTotal].getElementsByClassName("img")[0]
-                        const img = oldImg.cloneNode(true);
-                        oldImg.parentNode.replaceChild(img, oldImg);
-    
-                        const oldTitle = document.getElementsByClassName("classified-container")[i+tracksTotal].getElementsByClassName("title")[0]
-                        const title = oldTitle.cloneNode(true);
-                        oldTitle.parentNode.replaceChild(title, oldTitle);
-    
-                        const oldArtist = document.getElementsByClassName("classified-container")[i+tracksTotal].getElementsByClassName("artist")[0]
-                        const artist = oldArtist.cloneNode(true);
-                        oldArtist.parentNode.replaceChild(artist, oldArtist);
-    
-    
-    
-                        img.src = artists.items[i].images[0].url
-    
-                        title.innerText = artists.items[i].name
-                        title.addEventListener("click", () => window.open(artists.items[i].external_urls.spotify))
-                        title.title = `Song name: ${artists.items[i].name}`
-    
-                        artist.innerText = `Popularity: ${artists.items[i].popularity}%`
-                        
-                        document.getElementsByClassName("classified-container")[i+tracksTotal].classList.remove("fade")
-                    }, 1000)
-                } catch (error) {}
+        if (i === 0)
+            tracks = await result.json()
+        else if (i === 2)
+            recentlyPlayed = await result.json()
+        else {
+            artists = await result.json()
+
+            if (artists.total === 0) {
+                genres = []
             } else {
-                try {
-                    document.getElementsByClassName("classified-container")[i+tracksTotal].classList.add("fade")
-                } catch (error) {}
+                for (let i = 0; i < artists.items.length; i++) {
+                    for (let j = 0; j < artists.items[i].genres.length; j++) {
+                        let genres_contains_genre = false
+                        let genere_index
+        
+                        for (let x = 0; x < genres.length; x++) {
+                            if (genres[x].genre === artists.items[i].genres[j]) {
+                                genres_contains_genre = true
+                                genere_index = x
+                            }
+                        }
+        
+                        if (genres_contains_genre === false) {
+                            genres.push({
+                                genre: artists.items[i].genres[j],
+                                num: 1
+                            })
+                        } else {
+                            genres[genere_index].num += 1
+                        }
+                    }
+                }
+            
+                genres.sort((a, b) => b.num - a.num);
             }
-        }, 500 + i*100);
+        }
+    }
+
+    return { tracks, artists, genres, recentlyPlayed }
+}
+
+async function displayResult(timeRange = 0) {
+    placeholders_set()
+    let { tracks, artists, genres, recentlyPlayed } = await spotifyTop_artists_tracks_genres_recentlyPlayed(timeRange)
+    console.log(tracks, artists, genres, recentlyPlayed)
+
+
+    document.getElementById("genre-scrolls").innerHTML = ""
+    document.getElementById("track-scrolls").innerHTML = ""
+    document.getElementById("artist-scrolls").innerHTML = ""
+    document.getElementById("last-stream").innerHTML = ""
+
+    //genre-scrolls
+    for (let i = 0; i < genres.length; i++) {
+        const div = document.createElement("div")
+        div.classList.add("genre")
+        if (i === 0)
+            div.classList.add("genre-first")
+        else if (i === 29)
+            div.classList.add("genre-last")
+
+        
+            const div2 = document.createElement("div")
+            div2.classList.add("genre-text")
+
+            const genre = genres[i].genre
+            const words = genre.split(" ")
+
+            for (let i = 0; i < words.length; i++)
+                words[i] = words[i][0].toUpperCase() + words[i].substr(1);
+            
+            div2.innerText = words.join(" ")
+            div.appendChild(div2)
+
+        document.getElementById("genre-scrolls").appendChild(div)
+    }
+
+    //track-scrolls
+    for (let i = 0; i < tracks.total; i++) {
+        const div = document.createElement("div")
+        div.classList.add("track")
+        if (i === 0)
+            div.classList.add("track-first")
+        else if (i === 29)
+            div.classList.add("track-last")
+
+        
+            const img = document.createElement("img")
+            img.classList.add("track-img", "pointer")
+            try {
+                img.src = tracks.items[i].album.images[0].url
+            } catch (error) {}
+            img.alt = "img"
+            try {
+                img.addEventListener("click", () => window.open(tracks.items[i].album.external_urls.spotify))
+                img.title = `Album name: ${tracks.items[i].album.name}`
+            } catch (error) {}              
+            div.appendChild(img)
+
+            const title = document.createElement("div")
+            title.classList.add("track-title", "pointer")
+            try {
+                title.innerHTML = '<span class="track-title-num">' + (i+1) + '.</span> ' + tracks.items[i].name
+                title.addEventListener("click", () => window.open(tracks.items[i].external_urls.spotify))
+                title.title = `Song name: ${tracks.items[i].name}`
+            } catch (error) {}
+            div.appendChild(title)
+
+            const artist = document.createElement("div")
+            artist.classList.add("track-artist", "pointer")
+            try {
+                for (let j = 0; j < tracks.items[i].artists.length; j++)
+                    if (j == 0)
+                        artist.innerText = tracks.items[i].artists[0].name
+                    else
+                        artist.innerText += `, ${tracks.items[i].artists[j].name}`
+                artist.addEventListener("click", () => window.open(tracks.items[i].artists[0].external_urls.spotify))
+                artist.title = `Artist name: ${tracks.items[i].artists[0].name}`
+            } catch (error) {}
+            div.appendChild(artist)
+
+        document.getElementById("track-scrolls").appendChild(div)   
+    }
+
+    //artist-scrolls
+    for (let i = 0; i < artists.total; i++) {
+        const div = document.createElement("div")
+        div.classList.add("artist")
+        if (i === 0)
+            div.classList.add("artist-first")
+        else if (i === 29)
+            div.classList.add("artist-last")
+
+
+            const img = document.createElement("img")
+            img.classList.add("artist-img", "pointer")
+            try {
+                img.src = artists.items[i].images[0].url
+                img.addEventListener("click", () => window.open(artists.items[i].external_urls.spotify))
+            } catch (error) {}
+            img.alt = "img"
+            div.appendChild(img)
+
+            const title = document.createElement("div")
+            title.classList.add("artist-title", "pointer")
+            try {
+                title.innerHTML = '<span class="artist-title-num">' + (i+1) + '.</span> ' + artists.items[i].name
+                title.addEventListener("click", () => window.open(artists.items[i].external_urls.spotify))
+                title.title = `Artist name: ${artists.items[i].name}`
+            } catch (error) {}
+            div.appendChild(title)
+
+            const artist = document.createElement("div")
+            artist.classList.add("artist-popularity")
+            try {
+                artist.innerText = `${artists.items[i].popularity}% Popularity`
+            } catch (error) {}
+            div.appendChild(artist)
+
+        document.getElementById("artist-scrolls").appendChild(div)
+    }
+
+    //last-stream
+
+    let lastDay
+    const lastStream = recentlyPlayed.items
+
+    let div
+
+        for (let i = 0; i < lastStream.length; i++) {
+            if (!lastDay || !isSameDay(lastStream[i].played_at, lastDay)) {
+                div = document.createElement("div")
+                div.classList.add("last-stream-day-wrapper")
+
+                    const div2 = document.createElement("div")
+                    div2.classList.add("last-stream-day")
+
+                    if (isSameDay((new Date()), lastStream[i].played_at))
+                        div2.innerText = "Oggi"
+                    else if (isSameDay(((new Date()) - 86400000), lastStream[i].played_at))
+                        div2.innerText = "Ieri"
+                    else {
+                        const data = new Date(lastStream[i].played_at)
+                        div2.innerText = `${data.getDate()} ${monthIta[data.getMonth()]}`
+                    }
+                    div.appendChild(div2)
+
+                document.getElementById("last-stream").appendChild(div)
+            }
+            
+            lastDay = lastStream[i].played_at
+
+
+            const div3 = document.createElement("div")
+            div3.classList.add("last-stream-track")
+    
+                const left = document.createElement("div")
+                left.classList.add("last-stream-track-left")
+
+                    const img = document.createElement("img")
+                    img.classList.add("last-stream-track-img")
+                    try {
+                        img.src = lastStream[i].track.album.images[0].url
+                    } catch (error) {}
+                    img.alt = "img"
+                    left.appendChild(img)
+
+                    const txt = document.createElement("div")
+                    txt.classList.add("last-stream-track-txt")
+
+                        const title = document.createElement("div")
+                        title.classList.add("last-stream-track-title")
+                        title.innerText = lastStream[i].track.name
+                        txt.appendChild(title)
+
+                        const titleLonger = document.createElement("div")
+                        titleLonger.classList.add("last-stream-track-artist")
+                        try {
+                            for (let j = 0; j < lastStream[i].track.artists.length; j++)
+                                if (j == 0)
+                                    titleLonger.innerText = lastStream[i].track.artists[0].name
+                                else
+                                    titleLonger.innerText += `, ${lastStream[i].track.artists[j].name}`
+                        } catch (error) {}
+                        titleLonger.innerText += " • " + lastStream[i].track.album.name
+                        txt.appendChild(titleLonger)
+
+                    left.appendChild(txt)
+
+                div3.appendChild(left)
+
+                const right = document.createElement("div")
+                right.classList.add("last-stream-track-right")
+                const time = seeTimeDifference(lastStream[i].played_at)
+                console.log(seeTimeDifference(lastStream[i].played_at))
+                if (time.measureOfTimeNum === 0 || time.measureOfTimeNum === 1)
+                    right.innerText = dividersNameIta[0]
+                else {
+                    right.innerText = `${Math.trunc(time.value)} ${dividersNameIta[time.measureOfTimeNum][+(Math.trunc(time.value) === 1)]}`
+                }
+                div3.appendChild(right)
+                
+            div.appendChild(div3)
+        }
+}
+
+const dividers = [1, 1000, 60, 60, 24, 30]
+const dividersName = ["now", "seconds", "minutes", "hours", "days", "months"]
+const dividersNameIta = ["Ora", ["secondi fa", "secondo fa"], ["minuti fa", "minuto fa"], ["ore fa", "ora fa"], ["giorni fa", "giorno fa"], ["mesi fa", "mese fa"]]
+const monthIta = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
+
+function seeTimeDifference(time, returnMs = false) {
+    const now = new Date()
+    const song = new Date(time)
+
+    let value = now - song
+
+    if (returnMs)
+        return value
+
+    for (let i = 0; i < 6; i++) {
+        if (value/dividers[i] < 1) {
+            return {
+                value,
+                measureOfTime: dividersName[i-1],
+                measureOfTimeNum: i-1,
+                nowDate: now,
+                songDate: song,
+            }
+        }
+        value = value/dividers[i]
     }
 }
 
-for (let i = 0; i < 3; i++) {
-    document.getElementById(`button-${i}`).addEventListener("click", () => {
-
-        if (i === timeRange) {
-            console.log("già selezionato")
-            return
-        }
-
-        timeRange = i
-
-        const timeRangeTxt = ["nelle ultime 4 settimane", "negli ultimi 6 mesi", "nell'intera vita dell'account"]
-        document.getElementById("timeRange").innerText = `Brani calcolati ${timeRangeTxt[timeRange]}.`
-
-        if (!document.getElementById("traks-container").firstChild && !document.getElementById("artists-container").firstChild) {
-            showUI()
-        }
-        else
-            removeUI()
-    })
+function isSameDay(date1, date2) {
+    return ((new Date(date1)).getDate() === (new Date(date2)).getDate() && (new Date(date1)).getMonth() === (new Date(date2)).getMonth() && (new Date(date1)).getFullYear() === (new Date(date2)).getFullYear())
 }
 
-(() => {
-    // let myHeaders = new Headers();
-    // myHeaders.append("Content-Type", "application/json");
-    // myHeaders.append("Authorization", `Bearer  ${APIKey}`);
-
-    // const result = await fetch(`https://api.spotify.com/v1/me`, { //leva sta chiamata
-    //     method: 'GET',
-    //     headers: myHeaders,
-    //     redirect: "follow"
-    // })
-
-    // if (result.status != 200) {
-    //     if (result.status == 401) {
-    //         console.log(APIKey)
-    //         console.log(await result.json())
-    //         apiKeyExpired()
-    //         return
-    //     }
-    //     console.log("errore")
-    //     console.log(await result.text())
-
-    //     return
-    // }
-
-    const resultJ = JSON.parse(document.getElementById("hidden-user-info").innerText); document.getElementById("hidden-user-info").remove()
-    console.log(resultJ)
-
-    document.getElementById("name").innerHTML = `Brani e artisti preferiti di ${resultJ.display_name}!`
-
-
-    timeRange = 0
-
-    const timeRangeTxt = ["nelle ultime 4 settimane", "negli ultimi 6 mesi", "nell'intera vita dell'account"]
-    document.getElementById("timeRange").innerText = `Brani calcolati ${timeRangeTxt[timeRange]}.`
-
-    showUI()
-})()
+displayResult(0)
