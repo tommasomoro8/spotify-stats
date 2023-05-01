@@ -1,5 +1,6 @@
 const request = require("request-promise-native")
 const { db } = require("./firebase")
+const { FieldValue } = require('firebase-admin/firestore');
 
 async function getUserInfo(access_token, refresh_token) {
     let userInfo
@@ -17,17 +18,33 @@ async function getUserInfo(access_token, refresh_token) {
         return { error }
     }
 
+
+    let snapshot
+    try {
+        snapshot = await db.collection('users').doc(userInfo.id).collection("friends").get();
+    } catch (error) {
+        console.log("error database friends number", error)
+        return { error }
+    }
+    userInfo.friendsNum = snapshot._size || 0
+
+
     let dbUserInfo = {
         display_name: userInfo.display_name,
         email: userInfo.email,
         lastAccess: Math.trunc(new Date().getTime()/1000)
     }
 
-    if (userInfo.images && userInfo.images.length >=1 && userInfo.images[0].url)
-        dbUserInfo.imageUrl = userInfo.images[0].url
+    delete dbUserInfo.friendsNum
 
     if (refresh_token)
         dbUserInfo.refresh_token = refresh_token
+
+    try {
+        dbUserInfo.imageUrl = userInfo.images[0].url
+    } catch (error) {
+        dbUserInfo.imageUrl = FieldValue.delete()
+    }
 
     try {
         await db.collection('users').doc(userInfo.id).set(dbUserInfo, { merge: true });

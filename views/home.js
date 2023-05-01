@@ -1,4 +1,6 @@
-module.exports = (userInfo, access_token) => {
+module.exports = (userInfo, contentInfo, access_token) => {
+    // console.log(userInfo)
+    // console.log(contentInfo)
     return /*html*/`
     <!DOCTYPE html>
     <html lang="it">
@@ -9,27 +11,27 @@ module.exports = (userInfo, access_token) => {
         <link rel="stylesheet" type="text/css" href="base.css">
         <link rel="stylesheet" type="text/css" href="style.css">
         <link rel="icon" type="image/x-icon" href="spotify-logo.png">
-        <title>Spotify Stats</title>
+        <title>Spotify Stats - ${contentInfo.display_name}</title>
     </head>
     <body>
         <main>
             <div id="top">
                 <div id="top-bar">
-                    <span id="top-bar-logo-text">
+                    <span id="top-bar-logo-text" class="pointer">
                         <img class="top-bar-img" id="top-bar-logo" src="spotify-logo.png" alt="logo">
                         <div id="top-bar-text">Spotify Stats</div>
                     </span>
     
-                    <img class="top-bar-img" id="top-bar-userimg" src="https://i.scdn.co/image/ab6775700000ee856aeb0cf4d3371882dd4fdaf0" alt="user-img">
+                    <img class="top-bar-img" id="top-bar-userimg" src="${userInfo.imageUrl || "https://upload.wikimedia.org/wikipedia/commons/8/89/Portrait_Placeholder.png"}" alt="user-img">
                 </div>
                 <div id="top-main">
                     <div id="top-main-content" class="row">
-                        <img id="top-userimg" src="https://i.scdn.co/image/ab6775700000ee856aeb0cf4d3371882dd4fdaf0" alt="user-img">
+                        <img id="top-userimg" src="${contentInfo.imageUrl || "https://upload.wikimedia.org/wikipedia/commons/8/89/Portrait_Placeholder.png"}" alt="user-img">
     
                         <div id="top-main-content-text">
-                            <div id="top-main-name">${userInfo.display_name}</div>
-                            <div id="top-main-email">${userInfo.email}</div>
-                            <div id="top-main-friends">0 Amici</div>
+                            <div id="top-main-name">${contentInfo.display_name}</div>
+                            <div id="top-main-email">${contentInfo.email}</div>
+                            <div id="top-main-friends">${contentInfo.friendsNum} ${(contentInfo.friendsNum) === 1 ? "Amico" : "Amici"}</div>
                         </div>
                     </div>
                     
@@ -99,15 +101,62 @@ module.exports = (userInfo, access_token) => {
                 <div id="last-section-credits">Creato con&nbsp;<div id="last-section-heart">💚</div>&nbsp;da Tommaso Moro</div>
             </div>
     
-            <div id="lateral-bar"></div>
+            <div id="lateral-bar">
+                <div id="bar-section-top">
+                    <a id="logout" class="bar-section-top-button" href="/logout">Log out</a>
+                    <div id="add-friend" class="bar-section-top-button pointer">Aggiungi un amico</div>
+                </div>
+                <div id="lateral-bar-content">
+                    <div class="bar-section-titles">
+                        <div class="title-text">Amici</div>
+                        <div id="artist-subtitle-text" class="subtitle-text">Persone con cui condividete le vostre attività</div>
+                    </div>
+                    <div class="artist-scrolls-wrapper">
+                        <div id="friends-append" class="artist-scrolls scrollbar">
+                        </div>
+                    </div>
+
+                    <div class="bar-section-titles">
+                        <div class="title-text">Inviti ricevuti</div>
+                        <div id="artist-subtitle-text" class="subtitle-text">Persone che ti hanno invitato a condividere la vostra attività</div>
+                    </div>
+                    <div class="artist-scrolls-wrapper">
+                        <div id="friends-invited-by-append" class="artist-scrolls scrollbar">
+                        </div>
+                    </div>
+
+                    <div class="bar-section-titles">
+                        <div class="title-text">Amici Invitati</div>
+                        <div id="artist-subtitle-text" class="subtitle-text">Persone che hai invitato a condividere la vostra attività</div>
+                    </div>
+                    <div class="artist-scrolls-wrapper">
+                        <div id="friends-invited-append" class="artist-scrolls scrollbar">
+                        </div>
+                    </div>
+                </div>
+            </div>
             <div id="lateral-bar-overlay"></div>
+
+            <div id="new-friend">
+                <div id="new-friend-topbar">
+                    <div id="new-friend-close" class="pointer">x</div>
+                </div>
+                <div id="new-friend-title">Invita un amico</div>
+                <div id="new-friend-subtitle">Inserisci il suo Spotify ID e clicca aggiungi</div>
+                <input id="new-friend-txtinput" type="text" placeholder="&nbsp;&nbsp;Spotify ID">
+                <div id="new-friend-row">
+                    <div id="new-friend-submit" class="pointer">Aggiungi</div>
+                    <div id="new-friend-response"></div>
+                </div>
+            </div>
+            <div id="new-friend-overlay"></div>
         </main>
         
         <div id="hidden-access-token">${access_token}</div>
+        
+        <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
         <script src="app.js"></script>
     </body>
     </html>
     `
 }
-
-//<div id="hidden-user-info">${JSON.stringify(userInfo)}</div>

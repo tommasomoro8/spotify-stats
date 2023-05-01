@@ -20,11 +20,10 @@ const spotify = require("./services/spotify")
 const generateRandomString = require("./services/randString")
 
 /* routes */
-const { router: friends, friendList, invitedList, invitedByList } = require('./routes/friends')
+const { router: friends } = require('./routes/friends')
 const notifications = require('./routes/notifications')
 
 /* views */
-const resultpage = require('./views/result')
 const landingpage = require('./views/landing')
 const homepage = require('./views/home')
 
@@ -33,7 +32,6 @@ const pythonscript = require('./downloads/python-script')
 
 /* middleware */
 const secureHttps = require("./middleware/secureHttps")
-const { async } = require("@firebase/util")
 
 const client_id = process.env.CLIENT_ID_SPOTIFY;
 const client_secret = process.env.CLIENT_SECRET_SPOTIFY;
@@ -43,6 +41,17 @@ const redirect_uri = process.env.REDIRECT_URI_SPOTIFY;
 app.set("trust proxy", true);
 app.use(secureHttps(dev))
 app.use(cookieParser())
+
+app.use((req, res, next) => {
+    if (req.protocol + '://' + req.get('host') + req.originalUrl === process.env.URL || req.path[req.path.length-1] !== "/")
+        return next()
+    
+    if (JSON.stringify(req.query) === "{}") {
+        return res.redirect(req.protocol + '://' + req.get('host') + (req.path).slice(0, -1))
+    } else {
+        return res.redirect(req.protocol + '://' + req.get('host') + (req.path).slice(0, -1) + "?" + querystring.stringify(req.query))
+    }
+})
 
 app.use("/", express.static('./static'))
 
@@ -67,9 +76,12 @@ app.get("/", async (req, res) => {
         res.clearCookie("access_token")
         return res.redirect("/refresh_token")
     }
+    try {
+        userInfo.imageUrl = userInfo.images[0].url
+    } catch (e) {}
 
     res.setHeader("Content-Type", "text/html")
-    res.send(homepage(userInfo, access_token))
+    res.send(homepage(userInfo, userInfo, access_token))
 })
 
 
@@ -84,7 +96,15 @@ app.get('/login', (req, res) => {
             scope: scope,
             redirect_uri: redirect_uri,
             state: state
-        }))
+        })
+    )
+})
+
+app.get('/logout', (req, res) => {
+    res.clearCookie("access_token")
+    res.clearCookie("refresh_token")
+
+    res.redirect("/")
 })
 
 
@@ -200,144 +220,161 @@ app.get("/python-script-download", async (req, res) => {
 
 
 io.on('connection', async socket => {
-    let userInfo = await spotify.getUserInfo(cookie.parse(socket.handshake.headers.cookie).access_token)
+    const access_token = cookie.parse(socket.handshake.headers.cookie).access_token
+
+    if (access_token === undefined || access_token === null)
+        return socket.disconnect()
+    
+    let userInfo = await spotify.getUserInfo(access_token)
     if (userInfo.error)
-        socket.disconnect()
+        return socket.disconnect()
 
-    const notificationsObserver = db.collection('users').doc(userInfo.id).collection("notifications").onSnapshot(querySnapshot => {
-        if (querySnapshot.empty)
-            return socket.emit("notifications", [])
-    
-        let notifications = []
-    
-        querySnapshot.forEach(notification => {
-            let notificationObj = notification.data()
-            notificationObj.id = notification.id
-            notifications.push(notificationObj)
+    let notificationsObserver
+    let friendsObserver
+    let friendsInvitedObserver
+    let friendsInvitedByObserver
+
+    try {
+            
+        notificationsObserver = db.collection('users').doc(userInfo.id).collection("notifications").onSnapshot(querySnapshot => {
+            if (querySnapshot.empty)
+                return socket.emit("notifications", [])
+        
+            let notifications = []
+        
+            querySnapshot.forEach(notification => {
+                let notificationObj = notification.data()
+                notificationObj.id = notification.id
+                notifications.push(notificationObj)
+            })
+
+            socket.emit("notifications", notifications)
+        }, error => {
+            console.log(`Encountered error: ${error}`)
+            socket.emit("notifications", "internal error")
         })
 
-        socket.emit("notifications", notifications)
-    }, error => {
-        console.log(`Encountered error: ${error}`)
-        socket.emit("notifications", "internal error")
-    })
+        friendsObserver = db.collection('users').doc(userInfo.id).collection("friends").onSnapshot(querySnapshot => {
+            if (querySnapshot.empty)
+                return socket.emit("friends", [])
+                
+            let friends = []
+            const size = querySnapshot._size
+            let index = 0
+        
+            querySnapshot.forEach(async doc => {
+                index++
 
-    const friendsObserver = db.collection('users').doc(userInfo.id).collection("friends").onSnapshot(querySnapshot => {
-        if (querySnapshot.empty)
-            return socket.emit("friends", [])
-            
-        let friends = []
-        const size = querySnapshot._size
-        let index = 0
-    
-        querySnapshot.forEach(async doc => {
-            index++
+                let friend
+                try {
+                    friend = await db.collection('users').doc(doc.id).get();
+                } catch (error) {
+                    console.log("error get friend", error)
+                    socket.emit("friends", "internal error")
+                }
 
-            let friend
-            try {
-                friend = await db.collection('users').doc(doc.id).get();
-            } catch (error) {
-                console.log("error get friend", error)
-                socket.emit("friends", "internal error")
-            }
+                if (!friend.exists) {
+                    console.log("error friend !exists")
+                    socket.emit("friends", "internal error")
+                }
 
-            if (!friend.exists) {
-                console.log("error friend !exists")
-                socket.emit("friends", "internal error")
-            }
+                const friendData = friend.data()
+                friendData.id = doc.id
+                delete friendData.refresh_token
+                
+                friends.push(friendData)
 
-            const friendData = friend.data()
-            friendData.id = doc.id
-            
-            friends.push(friendData)
-
-            if (size === index)
-                socket.emit("friends", friends)
+                if (size === index)
+                    socket.emit("friends", friends)
+            })
+        }, error => {
+            console.log(`Encountered error: ${error}`)
+            socket.emit("friends", "internal error")
         })
-    }, error => {
-        console.log(`Encountered error: ${error}`)
-        socket.emit("friends", "internal error")
-    })
 
-    const friendsInvitedObserver = db.collection('users').doc(userInfo.id).collection("friend-invited").onSnapshot(querySnapshot => {
-        if (querySnapshot.empty)
-            return socket.emit("friendsInvited", [])
+        friendsInvitedObserver = db.collection('users').doc(userInfo.id).collection("friend-invited").onSnapshot(querySnapshot => {
+            if (querySnapshot.empty)
+                return socket.emit("friendsInvited", [])
 
-        let friends = []
-        const size = querySnapshot._size
-        let index = 0
+            let friends = []
+            const size = querySnapshot._size
+            let index = 0
 
-        querySnapshot.forEach(async doc => {
-            index++
+            querySnapshot.forEach(async doc => {
+                index++
 
-            let friend
-            try {
-                friend = await db.collection('users').doc(doc.id).get();
-            } catch (error) {
-                console.log("error get friend", error)
-                socket.emit("friendsInvited", "internal error")
-            }
+                let friend
+                try {
+                    friend = await db.collection('users').doc(doc.id).get();
+                } catch (error) {
+                    console.log("error get friend", error)
+                    socket.emit("friendsInvited", "internal error")
+                }
 
-            if (!friend.exists) {
-                console.log("error friend !exists")
-                socket.emit("friendsInvited", "internal error")
-            }
+                if (!friend.exists) {
+                    console.log("error friend !exists")
+                    socket.emit("friendsInvited", "internal error")
+                }
 
-            const friendData = friend.data()
-            friendData.id = doc.id
-            delete friendData.refresh_token
-            delete friendData.lastAccess
-            delete friendData.email
-            
-            friends.push(friendData)
+                const friendData = friend.data()
+                friendData.id = doc.id
+                delete friendData.refresh_token
+                delete friendData.lastAccess
+                delete friendData.email
+                
+                friends.push(friendData)
 
-            if (size === index)
-                socket.emit("friendsInvited", friends)
+                if (size === index)
+                    socket.emit("friendsInvited", friends)
+            })
+        }, error => {
+            console.log(`Encountered error: ${error}`)
+            socket.emit("friendsInvited", "internal error")
         })
-    }, error => {
-        console.log(`Encountered error: ${error}`)
-        socket.emit("friendsInvited", "internal error")
-    })
 
-    const friendsInvitedByObserver = db.collection('users').doc(userInfo.id).collection("friend-invited-by").onSnapshot(querySnapshot => {
-        if (querySnapshot.empty)
-            return socket.emit("friendsInvitedBy", [])
+        friendsInvitedByObserver = db.collection('users').doc(userInfo.id).collection("friend-invited-by").onSnapshot(querySnapshot => {
+            if (querySnapshot.empty)
+                return socket.emit("friendsInvitedBy", [])
 
-        let friends = []
-        const size = querySnapshot._size
-        let index = 0
+            let friends = []
+            const size = querySnapshot._size
+            let index = 0
 
-        querySnapshot.forEach(async doc => {
-            index++
+            querySnapshot.forEach(async doc => {
+                index++
 
-            let friend
-            try {
-                friend = await db.collection('users').doc(doc.id).get();
-            } catch (error) {
-                console.log("error get friend", error)
-                socket.emit("friendsInvitedBy", "internal error")
-            }
+                let friend
+                try {
+                    friend = await db.collection('users').doc(doc.id).get();
+                } catch (error) {
+                    console.log("error get friend", error)
+                    socket.emit("friendsInvitedBy", "internal error")
+                }
 
-            if (!friend.exists) {
-                console.log("error friend !exists")
-                socket.emit("friendsInvitedBy", "internal error")
-            }
+                if (!friend.exists) {
+                    console.log("error friend !exists")
+                    socket.emit("friendsInvitedBy", "internal error")
+                }
 
-            const friendData = friend.data()
-            friendData.id = doc.id
-            delete friendData.refresh_token
-            delete friendData.lastAccess
-            delete friendData.email
-            
-            friends.push(friendData)
+                const friendData = friend.data()
+                friendData.id = doc.id
+                delete friendData.refresh_token
+                delete friendData.lastAccess
+                delete friendData.email
+                
+                friends.push(friendData)
 
-            if (size === index)
-                socket.emit("friendsInvitedBy", friends)
+                if (size === index)
+                    socket.emit("friendsInvitedBy", friends)
+            })
+        }, error => {
+            console.log(`Encountered error: ${error}`)
+            socket.emit("friendsInvitedBy", "internal error")
         })
-    }, error => {
-        console.log(`Encountered error: ${error}`)
-        socket.emit("friendsInvitedBy", "internal error")
-    })
+        
+    } catch (error) {
+        console.log("socket error", error)
+    }
     
     socket.on('disconnect', () => {
         notificationsObserver()
@@ -346,7 +383,6 @@ io.on('connection', async socket => {
         friendsInvitedByObserver()
     })
 })
-
 
 app.get('/:friendId', async (req, res) => {
     const friendId = req.params.friendId
@@ -358,6 +394,9 @@ app.get('/:friendId', async (req, res) => {
         res.clearCookie("access_token")
         return res.redirect(`/refresh_token?then=${friendId}`)
     }
+    try {
+        userInfo.imageUrl = userInfo.images[0].url
+    } catch (e) {}
 
     let check
     try {
@@ -381,6 +420,18 @@ app.get('/:friendId', async (req, res) => {
 
     let friendData = friend.data()
 
+    friendData.id = friendId
+
+    let snapshot
+    try {
+        snapshot = await db.collection('users').doc(friendId).collection("friends").get();
+    } catch (error) {
+        console.log("error database friends number", error)
+        return { error }
+    }
+    friendData.friendsNum = snapshot._size || 0
+
+
     let tokens
     try {
         tokens = await request({
@@ -401,7 +452,7 @@ app.get('/:friendId', async (req, res) => {
     }
         
     res.setHeader("Content-Type", "text/html")
-    return res.send(resultpage(tokens.access_token, friendData)) //friend result
+    return res.send(homepage(userInfo, friendData, tokens.access_token)) //friend result
 })
 
 

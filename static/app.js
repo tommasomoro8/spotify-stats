@@ -1,6 +1,7 @@
 const access_token = document.getElementById("hidden-access-token").innerText; document.getElementById("hidden-access-token").remove()
 
 const timeRanges = [/* 1m */"short_term", /* 6m */"medium_term", /* all */"long_term"]
+const noImgSrc = "https://upload.wikimedia.org/wikipedia/commons/8/89/Portrait_Placeholder.png"
 
 const onemonth = document.getElementById("onemonth")
 const sixmonth = document.getElementById("sixmonth")
@@ -96,10 +97,13 @@ function open_close_top_bar() {
     if (isLateralBarOpen) {
         document.getElementById("lateral-bar").classList.remove("active")
         document.getElementById("lateral-bar-overlay").classList.remove("active")
+        document.body.classList.remove("noscroll")
     }
     else {
+        window.scrollTo(0, 0);
         document.getElementById("lateral-bar").classList.add("active")
         document.getElementById("lateral-bar-overlay").classList.add("active")
+        document.body.classList.add("noscroll")
     }
 
     isLateralBarOpen = !isLateralBarOpen
@@ -107,16 +111,6 @@ function open_close_top_bar() {
 document.getElementById("top-bar-userimg").addEventListener("click", open_close_top_bar)
 document.getElementById("lateral-bar-overlay").addEventListener("click", open_close_top_bar)
 
-
-// function resize_lateral_menu() {
-//     console.log("ciao")
-//     document.getElementById("lateral-bar-overlay").style.height = document.getElementsByTagName("main")[0].offsetHeight + "px"
-//     document.getElementById("lateral-bar").style.height = document.getElementsByTagName("main")[0].offsetHeight + "px"
-// } resize_lateral_menu()
-// window.addEventListener("resize", () => resize_lateral_menu)
-// document.getElementsByTagName("main")[0].addEventListener("resize", () => {
-//     console.log("ao")
-// });
 
 function apiKeyExpired() {
     window.location.replace("/refresh_token")
@@ -368,8 +362,6 @@ async function spotifyTop_artists_tracks_genres_recentlyPlayed(timeRange = 0) {
 async function displayResult(timeRange = 0) {
     placeholders_set()
     let { tracks, artists, genres, recentlyPlayed } = await spotifyTop_artists_tracks_genres_recentlyPlayed(timeRange)
-    console.log(tracks, artists, genres, recentlyPlayed)
-
 
     document.getElementById("genre-scrolls").innerHTML = ""
     document.getElementById("track-scrolls").innerHTML = ""
@@ -558,7 +550,6 @@ async function displayResult(timeRange = 0) {
                 const right = document.createElement("div")
                 right.classList.add("last-stream-track-right")
                 const time = seeTimeDifference(lastStream[i].played_at)
-                console.log(seeTimeDifference(lastStream[i].played_at))
                 if (time.measureOfTimeNum === 0 || time.measureOfTimeNum === 1)
                     right.innerText = dividersNameIta[0]
                 else {
@@ -570,21 +561,21 @@ async function displayResult(timeRange = 0) {
         }
 }
 
-const dividers = [1, 1000, 60, 60, 24, 30]
-const dividersName = ["now", "seconds", "minutes", "hours", "days", "months"]
-const dividersNameIta = ["Ora", ["secondi fa", "secondo fa"], ["minuti fa", "minuto fa"], ["ore fa", "ora fa"], ["giorni fa", "giorno fa"], ["mesi fa", "mese fa"]]
+const dividers = [1, 1000, 60, 60, 24, 30, 12]
+const dividersName = ["now", "seconds", "minutes", "hours", "days", "months", "years"]
+const dividersNameIta = ["Ora", ["secondi fa", "secondo fa"], ["minuti fa", "minuto fa"], ["ore fa", "ora fa"], ["giorni fa", "giorno fa"], ["mesi fa", "mese fa"], ["anni fa", "anno fa"]]
 const monthIta = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
 
 function seeTimeDifference(time, returnMs = false) {
-    const now = new Date()
-    const song = new Date(time)
+    const now = new Date().getTime()
+    const song = new Date(time).getTime()
 
     let value = now - song
 
     if (returnMs)
         return value
 
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < dividers.length; i++) {
         if (value/dividers[i] < 1) {
             return {
                 value,
@@ -596,6 +587,14 @@ function seeTimeDifference(time, returnMs = false) {
         }
         value = value/dividers[i]
     }
+
+    return {
+        value,
+        measureOfTime: dividersName[dividers.length-1],
+        measureOfTimeNum: dividers.length-1,
+        nowDate: now,
+        songDate: song,
+    }
 }
 
 function isSameDay(date1, date2) {
@@ -603,3 +602,293 @@ function isSameDay(date1, date2) {
 }
 
 displayResult(0)
+
+
+
+let isNewFriendOpen = false
+
+function open_close_add_friends() {
+    if (isNewFriendOpen) {
+        document.getElementById("new-friend").classList.remove("active")
+        document.getElementById("new-friend-overlay").classList.remove("active")
+    }
+    else {
+        window.scrollTo(0, 0);
+        
+        document.getElementById("new-friend-response").innerText = ""
+        document.getElementById("new-friend-txtinput").value = ""
+
+        document.getElementById("new-friend").classList.add("active")
+        document.getElementById("new-friend-overlay").classList.add("active")
+    }
+
+    isNewFriendOpen = !isNewFriendOpen
+}
+document.getElementById("add-friend").addEventListener("click", open_close_add_friends)
+document.getElementById("new-friend-overlay").addEventListener("click", open_close_add_friends)
+document.getElementById("new-friend-close").addEventListener("click", open_close_add_friends)
+
+
+const fill_friends_placeholders_ID = ["friends-append", "friends-invited-by-append", "friends-invited-append"]
+function fill_friends_placeholders() {
+    for (let r = 0; r < 3; r++) {
+        document.getElementById(fill_friends_placeholders_ID[r]).innerText = ""
+        for (let i = 0; i < 4; i++) {
+            const div = document.createElement("div")
+            div.classList.add("artist", "placeholder")
+            if (i === 0)
+                div.classList.add("artist-first")
+            else if (i === 29)
+                div.classList.add("artist-last")
+    
+    
+                const img = document.createElement("div")
+                img.classList.add("artist-img", "placeholder")
+    
+                    const imgAnimation = document.createElement("div")
+                    imgAnimation.classList.add("track-img-animation-placeholder")
+                    img.appendChild(imgAnimation)
+                    
+                div.appendChild(img)
+    
+                const title = document.createElement("div")
+                title.classList.add("artist-title", "placeholder")
+                    
+                    const titleAnimation = document.createElement("div")
+                    titleAnimation.classList.add("track-img-animation-placeholder")
+                    title.appendChild(titleAnimation)
+                    
+                div.appendChild(title)
+    
+                const artist = document.createElement("div")
+                artist.classList.add("artist-popularity", "placeholder")
+    
+                    const artistAnimation = document.createElement("div")
+                    artistAnimation.classList.add("track-img-animation-placeholder")
+                    artist.appendChild(artistAnimation)
+                    
+                div.appendChild(artist)
+    
+            document.getElementById(fill_friends_placeholders_ID[r]).appendChild(div)
+        }
+    }
+}
+fill_friends_placeholders()
+
+const myHeaders = new Headers();
+myHeaders.append("Content-Type", "application/json");
+
+let socket = io()
+
+socket.on("notifications", notifications => {
+    console.log("notifications", notifications)
+})
+
+socket.on("friends", async friends => {
+    console.log("friends", friends)
+    document.getElementById("friends-append").innerText = ""
+    for (let i = 0; i < friends.length; i++) {
+        const div = document.createElement("div")
+        div.classList.add("artist", "placeholder")
+        if (i === 0)
+            div.classList.add("artist-first")
+        else if (i === 29)
+            div.classList.add("artist-last")
+
+            const img = document.createElement("img")
+            img.classList.add("artist-img", "pointer")
+            try {
+                img.src = friends[i].imageUrl || noImgSrc
+            } catch (error) {
+                img.src = noImgSrc
+            }
+            img.alt = "img"
+            img.addEventListener("click", () => {
+                open_close_top_bar()
+                window.location.replace("/"+friends[i].id)
+            })
+            div.appendChild(img)
+
+            const title = document.createElement("div")
+            title.classList.add("artist-title", "pointer")
+            try {
+                title.innerText = friends[i].display_name
+            } catch (error) {}
+            title.addEventListener("click", () => {
+                open_close_top_bar()
+                window.location.replace("/"+friends[i].id)
+            })
+            div.appendChild(title)
+
+            const lastAccess = document.createElement("div")
+            lastAccess.classList.add("artist-popularity", "bar-section-small-txt")
+            try {
+                const time = seeTimeDifference(friends[i].lastAccess*1000)
+                if (time.measureOfTimeNum === 0 || time.measureOfTimeNum === 1)
+                    lastAccess.innerText = `Online ora`
+                else {
+                    lastAccess.innerText = `Ultimo accesso ${Math.trunc(time.value)} ${dividersNameIta[time.measureOfTimeNum][+(Math.trunc(time.value) === 1)]}`
+                }
+            } catch (error) {
+                console.error(error)
+            }
+            div.appendChild(lastAccess)
+
+            const removeFriend = document.createElement("div")
+            removeFriend.classList.add("bar-section-remove", "pointer")
+            try {
+                removeFriend.innerText = `Rimuovi amico`
+            } catch (error) {}
+            removeFriend.addEventListener("click", async () => {
+                const result = await fetch("/friends/remove/"+friends[i].id, {
+                    method: 'POST',
+                    headers: myHeaders,
+                    redirect: "follow"
+                })
+            })
+            div.appendChild(removeFriend)
+
+        document.getElementById("friends-append").appendChild(div)
+    }
+})
+
+socket.on("friendsInvited", friendsInvited => {
+    console.log("friendsInvited", friendsInvited)
+    document.getElementById("friends-invited-append").innerText = ""
+    for (let i = 0; i < friendsInvited.length; i++) {
+        const div = document.createElement("div")
+        div.classList.add("artist", "placeholder")
+        if (i === 0)
+            div.classList.add("artist-first")
+        else if (i === 29)
+            div.classList.add("artist-last")
+
+            const img = document.createElement("img")
+            img.classList.add("artist-img", "pointer")
+            try {
+                img.src = friendsInvited[i].imageUrl || noImgSrc
+            } catch (error) {
+                img.src = noImgSrc
+            }
+            img.alt = "img"
+            img.addEventListener("click", () => {
+                open_close_top_bar()
+                window.location.replace("/"+friendsInvited[i].id)
+            })
+            div.appendChild(img)
+
+            const title = document.createElement("div")
+            title.classList.add("artist-title", "pointer")
+            try {
+                title.innerText = friendsInvited[i].display_name
+            } catch (error) {}
+            title.addEventListener("click", () => {
+                open_close_top_bar()
+                window.location.replace("/"+friendsInvited[i].id)
+            })
+            div.appendChild(title)
+
+            const lastAccess = document.createElement("div")
+            lastAccess.classList.add("bar-section-cancel", "pointer")
+            lastAccess.innerText = "Annulla"
+            lastAccess.addEventListener("click", async () => {
+                const result = await fetch("/friends/invite-cancel/"+friendsInvited[i].id, {
+                    method: 'POST',
+                    headers: myHeaders,
+                    redirect: "follow"
+                })
+            })
+            div.appendChild(lastAccess)
+
+        document.getElementById("friends-invited-append").appendChild(div)
+    }
+})
+
+socket.on("friendsInvitedBy", friendsInvitedBy => {
+    console.log("friendsInvitedBy", friendsInvitedBy)
+    document.getElementById("friends-invited-by-append").innerText = ""
+    for (let i = 0; i < friendsInvitedBy.length; i++) {
+        const div = document.createElement("div")
+        div.classList.add("artist", "placeholder")
+        if (i === 0)
+            div.classList.add("artist-first")
+        else if (i === 29)
+            div.classList.add("artist-last")
+
+            const img = document.createElement("img")
+            img.classList.add("artist-img", "pointer")
+            try {
+                img.src = friendsInvitedBy[i].imageUrl || noImgSrc
+            } catch (error) {
+                img.src = noImgSrc
+            }
+            img.alt = "img"
+            img.addEventListener("click", () => {
+                open_close_top_bar()
+                window.location.replace("/"+friendsInvitedBy[i].id)
+            })
+            div.appendChild(img)
+
+            const title = document.createElement("div")
+            title.classList.add("artist-title", "pointer")
+            try {
+                title.innerText = friendsInvitedBy[i].display_name
+            } catch (error) {}
+            title.addEventListener("click", () => {
+                open_close_top_bar()
+                window.location.replace("/"+friendsInvitedBy[i].id)
+            })
+            div.appendChild(title)
+
+            const row = document.createElement("div")
+            row.classList.add("row")
+
+                const lastAccess = document.createElement("div")
+                lastAccess.classList.add("bar-section-accept", "pointer")
+                lastAccess.innerText = "Accetta"
+                lastAccess.addEventListener("click", async () => {
+                    const result = await fetch("/friends/invite-accept/"+friendsInvitedBy[i].id, {
+                        method: 'POST',
+                        headers: myHeaders,
+                        redirect: "follow"
+                    })
+                })
+                row.appendChild(lastAccess)
+
+                const removeFriend = document.createElement("div")
+                removeFriend.classList.add("bar-section-decline", "pointer")
+                removeFriend.innerText = "Rifiuta"
+                removeFriend.addEventListener("click", async () => {
+                    const result = await fetch("/friends/invite-decline/"+friendsInvitedBy[i].id, {
+                        method: 'POST',
+                        headers: myHeaders,
+                        redirect: "follow"
+                    })
+                })
+                row.appendChild(removeFriend)
+
+            div.appendChild(row)
+
+        document.getElementById("friends-invited-by-append").appendChild(div)
+    }
+})
+
+
+document.getElementById("new-friend-submit").addEventListener("click", async () => {
+    document.getElementById("new-friend-response").innerText = "Caricamento..."
+
+    const result = await fetch("/friends/invite/"+document.getElementById("new-friend-txtinput").value, {
+        method: 'POST',
+        headers: myHeaders,
+        redirect: "follow"
+    })
+
+    if (result.status === 200)
+        open_close_add_friends()
+    else
+        document.getElementById("new-friend-response").innerText = "Si è verificato un errore"
+})
+
+document.getElementById("new-friend").style.transition = "transform 0.5s cubic-bezier(0.4, 0, 0.2, 1)"
+
+document.getElementById("top-bar-logo-text").addEventListener("click", () => window.location.replace("/"))
