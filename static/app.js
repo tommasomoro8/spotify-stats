@@ -704,6 +704,11 @@ socket.on("friends", async friends => {
             }
             img.alt = "img"
             img.addEventListener("click", () => {
+                document.getElementById("top-userimg").src = friends[i].imageUrl || noImgSrc
+                document.getElementById("top-main-name").innerText = friends[i].display_name
+                document.getElementById("top-main-email").innerText = friends[i].email
+                document.getElementById("top-main-friends").innerText = ""
+                placeholders_set()
                 open_close_top_bar()
                 window.location.replace("/"+friends[i].id)
             })
@@ -715,6 +720,11 @@ socket.on("friends", async friends => {
                 title.innerText = friends[i].display_name
             } catch (error) {}
             title.addEventListener("click", () => {
+                document.getElementById("top-userimg").src = friends[i].imageUrl || noImgSrc
+                document.getElementById("top-main-name").innerText = friends[i].display_name
+                document.getElementById("top-main-email").innerText = friends[i].email
+                document.getElementById("top-main-friends").innerText = ""
+                placeholders_set()
                 open_close_top_bar()
                 window.location.replace("/"+friends[i].id)
             })
