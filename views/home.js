@@ -1,6 +1,6 @@
 module.exports = (userInfo, contentInfo, access_token) => {
-    // console.log(userInfo)
-    // console.log(contentInfo)
+    // console.log(userInfo.id)
+    // console.log(contentInfo.id)
     return /*html*/`
     <!DOCTYPE html>
     <html lang="it">
@@ -63,8 +63,15 @@ module.exports = (userInfo, contentInfo, access_token) => {
                 
                 <div class="section">
                     <div class="section-titles">
-                        <div class="title-text">Top canzoni</div>
-                        <div id="track-subtitle-text" class="subtitle-text">Le tue canzoni preferite nelle ultime 4 settimane</div>
+                        <span id="section-titles-text-audiotrigger">
+                            <div class="column">
+                                <div class="title-text">Top canzoni</div>
+                                <div id="track-subtitle-text" class="subtitle-text">Le tue canzoni preferite nelle ultime 4 settimane</div>
+                            </div>
+                            <div id="audiotrigger" class="pointer">
+                                <img id="audiotriggerimg" src="/mute.png"/>
+                            </div>
+                        </span>
                     </div>
                     <div id="track-scrolls-wrapper">
                         <div id="track-scrolls" class="scrollbar">
@@ -85,8 +92,15 @@ module.exports = (userInfo, contentInfo, access_token) => {
     
                 <div class="section">
                     <div class="section-titles">
-                        <div class="title-text">Stream recenti</div>
-                        <div id="last-stream-subtitle-text" class="subtitle-text">I tuoi brani riprodotti di recente</div>
+                        <span id="section-titles-text-audiotrigger2">
+                            <div class="column">
+                                <div class="title-text">Stream recenti</div>
+                                <div id="last-stream-subtitle-text" class="subtitle-text">I tuoi brani riprodotti di recente</div>
+                            </div>
+                            <div id="audiotrigger2" class="pointer">
+                                <img id="audiotriggerimg2" src="/mute.png"/>
+                            </div>
+                        </span>
                     </div>
                     <div id="last-stream" class="last-stream">
                     </div>
@@ -162,6 +176,7 @@ module.exports = (userInfo, contentInfo, access_token) => {
         
         <div id="hidden-access-token">${access_token}</div>
         <div id="hidden-user-info">${JSON.stringify(userInfo)}</div>
+        <div id="hidden-is-same-account">${userInfo.id === contentInfo.id}</div>
         
         <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
         <script src="app.js"></script>

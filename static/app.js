@@ -1,5 +1,6 @@
 const access_token = document.getElementById("hidden-access-token").innerText; document.getElementById("hidden-access-token").remove()
 const user_info = JSON.parse(document.getElementById("hidden-user-info").innerText); document.getElementById("hidden-user-info").remove()
+const is_same_account = eval(document.getElementById("hidden-is-same-account").innerText); document.getElementById("hidden-is-same-account").remove()
 
 const timeRanges = [/* 1m */"short_term", /* 6m */"medium_term", /* all */"long_term"]
 const noImgSrc = "https://upload.wikimedia.org/wikipedia/commons/8/89/Portrait_Placeholder.png"
@@ -375,6 +376,22 @@ async function spotifyTop_artists_tracks_genres_recentlyPlayed(timeRange = 0) {
     return { tracks, artists, genres, recentlyPlayed }
 }
 
+let playAudio = false
+
+function playAudioAction() {
+    playAudio = !playAudio
+    if (playAudio) {
+        document.getElementById("audiotriggerimg").src = "/volume.png"
+        document.getElementById("audiotriggerimg2").src = "/volume.png"
+    } else {
+        document.getElementById("audiotriggerimg").src = "/mute.png"
+        document.getElementById("audiotriggerimg2").src = "/mute.png"
+    }
+}
+
+document.getElementById("audiotrigger").addEventListener("click", playAudioAction)
+document.getElementById("audiotrigger2").addEventListener("click", playAudioAction)
+
 async function displayResult(timeRange = 0) {
     placeholders_set()
     let { tracks, artists, genres, recentlyPlayed } = await spotifyTop_artists_tracks_genres_recentlyPlayed(timeRange)
@@ -428,7 +445,92 @@ async function displayResult(timeRange = 0) {
             try {
                 img.addEventListener("click", () => window.open(tracks.items[i].album.external_urls.spotify))
                 img.title = `Album name: ${tracks.items[i].album.name}`
-            } catch (error) {}              
+            } catch (error) {} 
+
+            img.addEventListener("mouseenter", () => {
+                if (!playAudio || tracks.items[i].preview_url == null || tracks.items[i].preview_url == undefined)
+                    return
+
+                img.title = ""
+
+                let error = false
+
+                let audio = new Audio(tracks.items[i].preview_url)
+                let musicPlaying = false
+                img.style.scale = 0.95
+
+                let vol = 0;
+
+                let fadein
+                let timeout = setTimeout(async () => {
+                    setTimeout(async () => {
+                        handleMouseleave()
+                    }, (audio.duration * 1000) - 3000)
+                    
+
+                    vol = 0;
+                    let interval = 100
+                    audio.volume = vol
+
+                    try {
+                        await audio.play()
+                    } catch (e) {
+                        console.log(error)
+                        error = true
+                    }
+                    if (error) return
+
+                    fadein = setInterval(() => {
+                        if (vol < 1) {
+                            vol += 0.05
+                            if (vol > 1)
+                                vol = 1
+                            audio.volume = vol
+                        }
+                        else {
+                            clearInterval(fadein)
+                        }
+                    }, interval);
+
+                    img.classList.add("musicPlayingAnimation")
+                    musicPlaying = true
+                }, 1000)
+
+
+                function handleMouseleave() {
+                    clearInterval(fadein)
+                    
+                    if (musicPlaying) {
+                        img.style.scale = 1
+                        setTimeout(() => {
+                            img.classList.remove("musicPlayingAnimation")
+                        }, 1000);
+                        clearInterval(fadein)
+                        let interval = 100;
+                        let fadeout = setInterval(() => {
+                            if (vol > 0) {
+                                vol -= 0.05
+                                if (vol < 0)
+                                    vol = 0
+                                audio.volume = vol
+                            }
+                            else {
+                                clearInterval(fadeout)
+                                audio.pause()
+                                audio.currentTime = 0
+                            }
+                        }, interval);
+                    } else {
+                        clearTimeout(timeout)
+                        img.style.scale = 1
+                    }
+                    img.removeEventListener("mouseleave", handleMouseleave)
+                    img.title = `Album name: ${tracks.items[i].album.name}`
+                }
+
+                img.addEventListener("mouseleave", handleMouseleave)
+            
+            })          
             div.appendChild(img)
 
             const title = document.createElement("div")
@@ -538,6 +640,89 @@ async function displayResult(timeRange = 0) {
                     } catch (error) {}
                     img.alt = "img"
                     left.appendChild(img)
+
+                    img.addEventListener("mouseenter", () => {
+                        console.log(lastStream[i].track.preview_url)
+                        if (!playAudio || lastStream[i].track.preview_url == null || lastStream[i].track.preview_url == undefined)
+                            return
+        
+                        let error = false
+        
+                        let audio = new Audio(lastStream[i].track.preview_url)
+                        let musicPlaying = false
+                        img.style.scale = 0.95
+        
+                        let vol = 0;
+        
+                        let fadein
+                        let timeout = setTimeout(async () => {
+                            setTimeout(async () => {
+                                handleMouseleave()
+                            }, (audio.duration * 1000) - 3000)
+                            
+        
+                            vol = 0;
+                            let interval = 100
+                            audio.volume = vol
+        
+                            try {
+                                await audio.play()
+                            } catch (e) {
+                                console.log(error)
+                                error = true
+                            }
+                            if (error) return
+        
+                            fadein = setInterval(() => {
+                                if (vol < 1) {
+                                    vol += 0.05
+                                    if (vol > 1)
+                                        vol = 1
+                                    audio.volume = vol
+                                }
+                                else {
+                                    clearInterval(fadein)
+                                }
+                            }, interval);
+        
+                            img.classList.add("musicPlayingAnimation")
+                            musicPlaying = true
+                        }, 1000)
+        
+        
+                        function handleMouseleave() {
+                            clearInterval(fadein)
+                            
+                            if (musicPlaying) {
+                                img.style.scale = 1
+                                setTimeout(() => {
+                                    img.classList.remove("musicPlayingAnimation")
+                                }, 1000);
+                                clearInterval(fadein)
+                                let interval = 100;
+                                let fadeout = setInterval(() => {
+                                    if (vol > 0) {
+                                        vol -= 0.05
+                                        if (vol < 0)
+                                            vol = 0
+                                        audio.volume = vol
+                                    }
+                                    else {
+                                        clearInterval(fadeout)
+                                        audio.pause()
+                                        audio.currentTime = 0
+                                    }
+                                }, interval);
+                            } else {
+                                clearTimeout(timeout)
+                                img.style.scale = 1
+                            }
+                            img.removeEventListener("mouseleave", handleMouseleave)
+                        }
+        
+                        img.addEventListener("mouseleave", handleMouseleave)
+                    
+                    })          
 
                     const txt = document.createElement("div")
                     txt.classList.add("last-stream-track-txt")
@@ -711,6 +896,9 @@ socket.on("notifications", notifications => {
 socket.on("friends", friends => {
     console.log("friends", friends)
     document.getElementById("friends-append").innerText = ""
+
+    if (is_same_account)
+        document.getElementById("top-main-friends").innerText = (friends.length).toString() + " " + ((friends.length) === 1 ? "Amico" : "Amici")
 
     if (friends.length > 0)
         document.getElementById("bar-section-friends").style.display = "block"

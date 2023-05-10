@@ -1,4 +1,4 @@
-module.exports = () => {
+module.exports = (text, second_text, error_code) => {
     return /*html*/`
     <!DOCTYPE html>
     <html lang="it">
@@ -9,23 +9,21 @@ module.exports = () => {
         <link rel="stylesheet" type="text/css" href="base.css">
         <link rel="stylesheet" type="text/css" href="style.css">
         <link rel="icon" type="image/x-icon" href="spotify-logo.png">
-        <title>Spotify Stats</title>
+        <title>Spotify Stats - ${error_code}</title>
     </head>
     <body>
         <main>
             <div id="top" class="error">
                 <div id="top-bar">
-                    <span id="top-bar-logo-text">
+                    <span id="top-bar-logo-text" class="pointer" onclick="window.location.href = '/'">
                         <img class="top-bar-img" id="top-bar-logo" src="spotify-logo.png" alt="logo">
                         <div id="top-bar-text">Spotify Stats</div>
                     </span>
                 </div>
 
                 <div id="top-main-content-error" class="column">
-                    <div id="error-main-text">
-                        <span class="login_hover pointer" onclick=" window.location.href = '/login' ">Clicca qui per accedere</span>
-                    </div>
-                    <div id="error-second-text">Verrai reindirizzato alla pagina di Spotify®</div>
+                    <div id="error-main-text">${text}</div>
+                    <div id="error-second-text">${second_text}</div>
                 </div>
             </div>
         </main>

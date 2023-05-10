@@ -25,6 +25,7 @@ const notifications = require('./routes/notifications')
 /* views */
 const landingpage = require('./views/landing')
 const homepage = require('./views/home')
+const errorpage = require('./views/error')
 
 /* downloads */
 const pythonscript = require('./downloads/python-script')
@@ -112,7 +113,7 @@ app.get('/callback', async (req, res) => {
     const state = req.query.state || null;
   
     if (state === null)
-        return res.status(401).send('state_mismatch')
+        return res.status(401).send(errorpage("401 - Unauthorized", "state_mismatch", "401"))
 
     let tokens
     try {
@@ -131,7 +132,7 @@ app.get('/callback', async (req, res) => {
         })
     } catch (error) {
         console.log("error request tokens", error)
-        return res.status(500).send("error request tokens")
+        return res.status(500).send(errorpage("500 - Internal error", "That’s all we know.", "500"))
     }
 
     let userInfo = await spotify.getUserInfo(tokens.access_token, tokens.refresh_token)
@@ -171,7 +172,7 @@ app.get('/refresh_token', async (req, res) => {
         }
 
         if (req.query.result === "string")
-            return res.sendStatus(401)
+            return res.status(401).send(errorpage("401 - Unauthorized", "That’s all we know.", "401"))
 
         return res.redirect("/")
     }
@@ -184,7 +185,7 @@ app.get('/refresh_token', async (req, res) => {
         }
 
         if (req.query.result === "string")
-            return res.sendStatus(401)
+            return res.status(401).send(errorpage("401 - Unauthorized", "That’s all we know.", "401"))
 
         return res.redirect("/")
     }
@@ -402,11 +403,11 @@ app.get('/:friendId', async (req, res) => {
         check = await db.collection('users').doc(userInfo.id).collection('friends').doc(friendId).get()
     } catch (error) {
         console.log(error)
-        return res.status(500).send("error checking user")
+        return res.status(500).send(errorpage("500 - Internal error", "That’s all we know.", "500"))
     }
 
     if (!check.exists)
-        return res.status(403).send(`${friendId} non è tuo amico o non esiste`)
+        return res.status(403).send(errorpage("403 - Forbidden", `${friendId} non è tuo amico o non esiste.`, "403"))
 
 
     let friend
@@ -414,7 +415,7 @@ app.get('/:friendId', async (req, res) => {
         friend = await db.collection('users').doc(friendId).get()
     } catch (error) {
         console.log(error)
-        return res.status(500).send("error checking user")
+        return res.status(500).send(errorpage("500 - Internal error", "That’s all we know.", "500"))
     }
 
     let friendData = friend.data()
@@ -425,8 +426,8 @@ app.get('/:friendId', async (req, res) => {
     try {
         snapshot = await db.collection('users').doc(friendId).collection("friends").get();
     } catch (error) {
-        console.log("error database friends number", error)
-        return { error }
+        console.log("error database friends number", error) 
+        return res.status(500).send(errorpage("500 - Internal error", "That’s all we know.", "500"))
     }
     friendData.friendsNum = snapshot._size || 0
 
@@ -447,7 +448,8 @@ app.get('/:friendId', async (req, res) => {
         })
     } catch (error) {
         console.log("error request tokens", error)
-        return res.status(403).send("refresh_token non valido, l'utente proprietario protrebbe averlo disabilitato. potrai continuare a vedere la sua attività quando esso eseguirà il login nuovamente")
+
+        return res.status(403).send(errorpage("403 - Forbidden", `Non potrai vedere l'attività di ${friendData.display_name} fin quando non eseguirà nuovamente il login.`, "403"))
     }
         
     res.setHeader("Content-Type", "text/html")
@@ -457,12 +459,12 @@ app.get('/:friendId', async (req, res) => {
 
 app.get("*", (req, res) => {
     res.setHeader("Content-Type", "text/html")
-    res.status(404).send("404 page not found")
+    res.status(404).send(errorpage("404 - Pagina non trovata", "E' tutto quello che sappiamo", "404"))
 })
 
 app.use((err, req, res, next) => {
     console.error(err.stack)
-    res.status(500).send('Something broke!')
+    res.status(500).send(errorpage("500 - Internal error", "Something broke!", "500"))
 })
 
 const port = process.env.PORT || 3000
