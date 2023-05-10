@@ -11,9 +11,8 @@ const server = http.createServer(app)
 const { Server } = require("socket.io")
 const io = new Server(server)
 
-const dev = app.get("env") === 'development'
-
-if (dev) require('dotenv').config()
+require('dotenv').config()
+const dev = process.env.NODE_ENV === 'development'
 
 const { db } = require("./services/firebase")
 const spotify = require("./services/spotify")
@@ -42,16 +41,16 @@ app.set("trust proxy", true);
 app.use(secureHttps(dev))
 app.use(cookieParser())
 
-app.use((req, res, next) => {
-    if (req.protocol + '://' + req.get('host') + req.originalUrl === process.env.URL || req.path[req.path.length-1] !== "/")
-        return next()
+// app.use((req, res, next) => {
+//     if (req.protocol + '://' + req.get('host') + req.originalUrl === process.env.URL || req.path[req.path.length-1] !== "/")
+//         return next()
     
-    if (JSON.stringify(req.query) === "{}") {
-        return res.redirect(req.protocol + '://' + req.get('host') + (req.path).slice(0, -1))
-    } else {
-        return res.redirect(req.protocol + '://' + req.get('host') + (req.path).slice(0, -1) + "?" + querystring.stringify(req.query))
-    }
-})
+//     if (JSON.stringify(req.query) === "{}") {
+//         return res.redirect(req.protocol + '://' + req.get('host') + (req.path).slice(0, -1))
+//     } else {
+//         return res.redirect(req.protocol + '://' + req.get('host') + (req.path).slice(0, -1) + "?" + querystring.stringify(req.query))
+//     }
+// })
 
 app.use("/", express.static('./static'))
 
@@ -468,5 +467,5 @@ app.use((err, req, res, next) => {
 
 const port = process.env.PORT || 3000
 server.listen(port, () => {
-    console.log(`listening on port ${port} in ${app.get("env")} mode...`)
+    console.log(`listening on port ${port} in ${process.env.NODE_ENV} mode...`)
 })

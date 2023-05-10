@@ -7,6 +7,9 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js"
   },
+  "engines": {
+    "node": "14.x"
+  },
   "author": "Tommaso Moro",
   "license": "ISC",
   "dependencies": {
@@ -14,7 +17,8 @@
     "cookie-parser": "^1.4.6",
     "dotenv": "^16.0.3",
     "express": "^4.18.2",
-    "firebase-admin": "^11.7.0",
+    "firebase-admin": "^11.8.0",
+    "request": "^2.88.2",
     "request-promise-native": "^1.0.9",
     "socket.io": "^4.6.1"
   }
