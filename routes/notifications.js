@@ -3,25 +3,8 @@ const spotify = require("../services/spotify")
 
 const express = require("express")
 const router = express.Router()
-/*
-//DA LEVARE
-router.get("/list", async (req, res) => {
-    const access_token = req.cookies.access_token
 
-    let userInfo = await spotify.getUserInfo(access_token)
-    if (userInfo.error) {
-        res.clearCookie("access_token")
-        return res.redirect("/refresh_token")
-    }
 
-    let notifications = await retrieveNotifications(userInfo.id)
-
-    if (notifications.error)
-        return res.status(500).send(notifications.error)
-
-    res.send(notifications)
-})
-*/
 router.post("/delete/:notificationId", async (req, res) => {
     const access_token = req.cookies.access_token
     const notificationId = req.params.notificationId
@@ -53,6 +36,31 @@ router.post("/delete/:notificationId", async (req, res) => {
         return res.status(500).send("db error")
     }
 
+    res.send("done")
+})
+
+router.post("/delete-all", async (req, res) => {
+    const access_token = req.cookies.access_token
+
+    let userInfo = await spotify.getUserInfo(access_token)
+    if (userInfo.error) {
+        res.clearCookie("access_token")
+        return res.redirect("/refresh_token")
+    }
+
+    let notifications = await retrieveNotifications(userInfo.id)
+
+    if (notifications.error)
+        return res.status(500).send(notifications.error)
+
+    notifications.forEach(async notification => {
+        try {
+            await db.collection('users').doc(userInfo.id).collection('notifications').doc(notification.id).delete()
+        } catch (error) {
+            console.log(error)
+        }
+    })
+    
     res.send("done")
 })
 

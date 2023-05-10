@@ -22,7 +22,10 @@ module.exports = (userInfo, contentInfo, access_token) => {
                         <div id="top-bar-text">Spotify Stats</div>
                     </span>
     
-                    <img class="top-bar-img" id="top-bar-userimg" src="${userInfo.imageUrl || "https://upload.wikimedia.org/wikipedia/commons/8/89/Portrait_Placeholder.png"}" alt="user-img">
+                    <span id="top-bar-logo-userimg">
+                        <img class="top-bar-img" id="top-bar-userimg" src="${userInfo.imageUrl || "https://upload.wikimedia.org/wikipedia/commons/8/89/Portrait_Placeholder.png"}" alt="user-img">
+                        <div id="notification-dot">1</div>
+                    </span>
                 </div>
                 <div id="top-main">
                     <div id="top-main-content" class="row">
@@ -109,32 +112,35 @@ module.exports = (userInfo, contentInfo, access_token) => {
                     <div id="add-friend" class="bar-section-top-button pointer">Aggiungi un amico</div>
                 </div>
                 <div id="lateral-bar-content">
-                    <div class="bar-section-titles">
-                        <div class="title-text">Amici</div>
-                        <div id="artist-subtitle-text" class="subtitle-text">Persone con cui condividete le vostre attività</div>
-                    </div>
-                    <div class="artist-scrolls-wrapper">
-                        <div id="friends-append" class="artist-scrolls scrollbar">
+                    <span id="bar-section-friends">
+                        <div class="bar-section-titles">
+                            <div class="title-text">Amici</div>
+                            <div id="artist-subtitle-text" class="subtitle-text">Persone con cui condividete le vostre attività</div>
                         </div>
-                    </div>
+                        <div class="artist-scrolls-wrapper">
+                            <div id="friends-append" class="artist-scrolls scrollbar"></div>
+                        </div>
+                    </span>
+                    
+                    <span id="bar-section-friends-invited-by">
+                        <div class="bar-section-titles">
+                            <div class="title-text">Inviti ricevuti</div>
+                            <div id="artist-subtitle-text" class="subtitle-text">Persone che ti hanno invitato a condividere la vostra attività</div>
+                        </div>
+                        <div class="artist-scrolls-wrapper">
+                            <div id="friends-invited-by-append" class="artist-scrolls scrollbar"></div>
+                        </div>
+                    </span>
 
-                    <div class="bar-section-titles">
-                        <div class="title-text">Inviti ricevuti</div>
-                        <div id="artist-subtitle-text" class="subtitle-text">Persone che ti hanno invitato a condividere la vostra attività</div>
-                    </div>
-                    <div class="artist-scrolls-wrapper">
-                        <div id="friends-invited-by-append" class="artist-scrolls scrollbar">
+                    <span id="bar-section-friends-invited">
+                        <div class="bar-section-titles">
+                            <div class="title-text">Amici Invitati</div>
+                            <div id="artist-subtitle-text" class="subtitle-text">Persone che hai invitato a condividere la vostra attività</div>
                         </div>
-                    </div>
-
-                    <div class="bar-section-titles">
-                        <div class="title-text">Amici Invitati</div>
-                        <div id="artist-subtitle-text" class="subtitle-text">Persone che hai invitato a condividere la vostra attività</div>
-                    </div>
-                    <div class="artist-scrolls-wrapper">
-                        <div id="friends-invited-append" class="artist-scrolls scrollbar">
+                        <div class="artist-scrolls-wrapper">
+                            <div id="friends-invited-append" class="artist-scrolls scrollbar"></div>
                         </div>
-                    </div>
+                    </span>
                 </div>
             </div>
             <div id="lateral-bar-overlay"></div>
@@ -155,6 +161,7 @@ module.exports = (userInfo, contentInfo, access_token) => {
         </main>
         
         <div id="hidden-access-token">${access_token}</div>
+        <div id="hidden-user-info">${JSON.stringify(userInfo)}</div>
         
         <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
         <script src="app.js"></script>

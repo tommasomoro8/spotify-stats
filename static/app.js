@@ -1,7 +1,11 @@
 const access_token = document.getElementById("hidden-access-token").innerText; document.getElementById("hidden-access-token").remove()
+const user_info = JSON.parse(document.getElementById("hidden-user-info").innerText); document.getElementById("hidden-user-info").remove()
 
 const timeRanges = [/* 1m */"short_term", /* 6m */"medium_term", /* all */"long_term"]
 const noImgSrc = "https://upload.wikimedia.org/wikipedia/commons/8/89/Portrait_Placeholder.png"
+
+const myHeaders = new Headers();
+myHeaders.append("Content-Type", "application/json");
 
 const onemonth = document.getElementById("onemonth")
 const sixmonth = document.getElementById("sixmonth")
@@ -90,6 +94,15 @@ ever.addEventListener("click", () => {
     displayResult(2)
 })
 
+async function delete_all_notifications() {
+    const result = await fetch("/notifications/delete-all", {
+        method: 'POST',
+        headers: myHeaders,
+        redirect: "follow"
+    })
+
+    return result.status
+}
 
 let isLateralBarOpen = false
 
@@ -104,11 +117,14 @@ function open_close_top_bar() {
         document.getElementById("lateral-bar").classList.add("active")
         document.getElementById("lateral-bar-overlay").classList.add("active")
         document.body.classList.add("noscroll")
+
+        delete_all_notifications()
+        document.getElementById("notification-dot").classList.remove("active")
     }
 
     isLateralBarOpen = !isLateralBarOpen
 }
-document.getElementById("top-bar-userimg").addEventListener("click", open_close_top_bar)
+document.getElementById("top-bar-logo-userimg").addEventListener("click", open_close_top_bar)
 document.getElementById("lateral-bar-overlay").addEventListener("click", open_close_top_bar)
 
 
@@ -675,18 +691,32 @@ function fill_friends_placeholders() {
 }
 fill_friends_placeholders()
 
-const myHeaders = new Headers();
-myHeaders.append("Content-Type", "application/json");
-
 let socket = io()
 
 socket.on("notifications", notifications => {
     console.log("notifications", notifications)
+    if (notifications.length > 0) {
+        document.getElementById("notification-dot").innerText = notifications.length
+        if (!isLateralBarOpen) {
+            document.getElementById("notification-dot").classList.add("active")
+        } else {
+            delete_all_notifications()
+        }
+    } else {
+        document.getElementById("notification-dot").classList.remove("active")
+    }
+    
 })
 
-socket.on("friends", async friends => {
+socket.on("friends", friends => {
     console.log("friends", friends)
     document.getElementById("friends-append").innerText = ""
+
+    if (friends.length > 0)
+        document.getElementById("bar-section-friends").style.display = "block"
+    else
+        document.getElementById("bar-section-friends").style.display = "none"
+
     for (let i = 0; i < friends.length; i++) {
         const div = document.createElement("div")
         div.classList.add("artist", "placeholder")
@@ -765,6 +795,12 @@ socket.on("friends", async friends => {
 socket.on("friendsInvited", friendsInvited => {
     console.log("friendsInvited", friendsInvited)
     document.getElementById("friends-invited-append").innerText = ""
+
+    if (friendsInvited.length > 0)
+        document.getElementById("bar-section-friends-invited").style.display = "block"
+    else
+        document.getElementById("bar-section-friends-invited").style.display = "none"
+
     for (let i = 0; i < friendsInvited.length; i++) {
         const div = document.createElement("div")
         div.classList.add("artist", "placeholder")
@@ -817,6 +853,12 @@ socket.on("friendsInvited", friendsInvited => {
 socket.on("friendsInvitedBy", friendsInvitedBy => {
     console.log("friendsInvitedBy", friendsInvitedBy)
     document.getElementById("friends-invited-by-append").innerText = ""
+
+    if (friendsInvitedBy.length > 0)
+        document.getElementById("bar-section-friends-invited-by").style.display = "block"
+    else
+        document.getElementById("bar-section-friends-invited-by").style.display = "none"
+
     for (let i = 0; i < friendsInvitedBy.length; i++) {
         const div = document.createElement("div")
         div.classList.add("artist", "placeholder")
@@ -901,4 +943,11 @@ document.getElementById("new-friend-submit").addEventListener("click", async () 
 
 document.getElementById("new-friend").style.transition = "transform 0.5s cubic-bezier(0.4, 0, 0.2, 1)"
 
-document.getElementById("top-bar-logo-text").addEventListener("click", () => window.location.replace("/"))
+document.getElementById("top-bar-logo-text").addEventListener("click", () => {
+    document.getElementById("top-userimg").src = user_info.imageUrl || noImgSrc
+    document.getElementById("top-main-name").innerText = user_info.display_name
+    document.getElementById("top-main-email").innerText = user_info.email
+    document.getElementById("top-main-friends").innerText = ""
+    placeholders_set()
+    window.location.replace("/")
+})
