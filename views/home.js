@@ -99,6 +99,8 @@ module.exports = (userInfo, contentInfo, access_token) => {
                     <a class="last-section-link" onclick="window.open('https://www.instagram.com/tommaso.moroo/')">Visita il mio Instagram</a>
                 </div>
                 <div id="last-section-credits">Creato con&nbsp;<div id="last-section-heart">💚</div>&nbsp;da Tommaso Moro</div>
+                <div id="last-section-fill-left"></div>
+                <div id="last-section-fill-right"></div>
             </div>
     
             <div id="lateral-bar">
@@ -156,6 +158,9 @@ module.exports = (userInfo, contentInfo, access_token) => {
         
         <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
         <script src="app.js"></script>
+
+        <div id="fill-top-left"></div>
+        <div id="fill-top-right"></div>
     </body>
     </html>
     `
