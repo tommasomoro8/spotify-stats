@@ -459,7 +459,7 @@ app.get('/:friendId', async (req, res) => {
 
 app.get("*", (req, res) => {
     res.setHeader("Content-Type", "text/html")
-    res.status(404).send(errorpage("404 - Pagina non trovata", "E' tutto quello che sappiamo", "404"))
+    res.status(404).send(errorpage("404 - Pagina non trovata", "E' tutto quello che sappiamo.", "404"))
 })
 
 app.use((err, req, res, next) => {

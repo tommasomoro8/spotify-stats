@@ -642,7 +642,6 @@ async function displayResult(timeRange = 0) {
                     left.appendChild(img)
 
                     img.addEventListener("mouseenter", () => {
-                        console.log(lastStream[i].track.preview_url)
                         if (!playAudio || lastStream[i].track.preview_url == null || lastStream[i].track.preview_url == undefined)
                             return
         
@@ -893,12 +892,18 @@ socket.on("notifications", notifications => {
     
 })
 
+let timeoutfriends
+
 socket.on("friends", friends => {
     console.log("friends", friends)
     document.getElementById("friends-append").innerText = ""
 
-    if (is_same_account)
-        document.getElementById("top-main-friends").innerText = (friends.length).toString() + " " + ((friends.length) === 1 ? "Amico" : "Amici")
+    if (is_same_account) {
+        clearTimeout(timeoutfriends)
+        timeoutfriends = setTimeout(() => {
+            document.getElementById("top-main-friends").innerText = (friends.length).toString() + " " + ((friends.length) === 1 ? "Amico" : "Amici")
+        }, 1000);
+    }
 
     if (friends.length > 0)
         document.getElementById("bar-section-friends").style.display = "block"
