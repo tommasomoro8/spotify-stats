@@ -4,29 +4,6 @@ module.exports = (refresh_token, userInfo) => {
     const date = new Date()
     const url = process.env.URL
     return `
-# generated on ${monthNames[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()} for ${userInfo.display_name} #
-
-### do NOT share with anyone your private refresh_token ###
-refresh_token = "${refresh_token}"
-
-import requests # python3 -m pip install requests
-
-access_token_request = requests.get(f'${url}refresh_token?refresh_token={refresh_token}&result=string')
-
-if access_token_request.status_code != 200:
-    print(f"Server responded with: '{access_token_request.text}'. Il refresh_token potrebbe non essere più valido. Genera un altro script su: '${url}python-script-download'")
-    exit()
-
-access_token = access_token_request.text
-
-print(access_token)
-    `
-}
-
-module.exports = (refresh_token, userInfo) => {
-    const date = new Date()
-    const url = process.env.URL
-    return `
 
 # generated on ${monthNames[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()} for ${userInfo.display_name} #
 
