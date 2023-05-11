@@ -373,6 +373,10 @@ async function spotifyTop_artists_tracks_genres_recentlyPlayed(timeRange = 0) {
         }
     }
 
+    console.log("tracks", tracks)
+    console.log("artists", artists)
+    console.log("recentlyPlayed", recentlyPlayed)
+
     return { tracks, artists, genres, recentlyPlayed }
 }
 
