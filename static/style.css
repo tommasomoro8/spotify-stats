@@ -1249,6 +1249,16 @@ main {
     #lateral-bar.active {
         width: 100vw;
     }
+
+    #top {
+        padding-left: 10px;
+        padding-right: 10px;
+    }
+
+    #content {
+        padding-left: 10px;
+        padding-right: 10px;
+    }
 }
 
 .login_hover {
