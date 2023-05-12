@@ -1241,6 +1241,31 @@ main {
         margin-bottom: 10px;
     
     }
+
+
+    .last-stream-track-title {
+        width: 180px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 200px;
+    }
+    .last-stream-track-artist {
+        width: 200px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 200px;
+
+    }
+    .last-stream-track-right {
+        width: 60px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 200px;
+    }
+    
     
 
 }
@@ -1258,6 +1283,21 @@ main {
     #content {
         padding-left: 10px;
         padding-right: 10px;
+    }
+}
+
+@media screen and (max-width: 380px) {
+    #selector-selected {
+        width: 110px!important;
+    }
+
+    #selector-selected.one {
+        transform: translateX(118px);
+        width: 110px;
+    }
+    #selector-selected.two {
+        transform: translateX(238px);
+        width: 110px;
     }
 }
 
