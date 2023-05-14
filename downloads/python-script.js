@@ -10,7 +10,7 @@ module.exports = (refresh_token, userInfo) => {
 ### do NOT share with anyone your private refresh_token ###
 refresh_token = "${refresh_token}"
 
-import requests # python3 -m pip install requests
+import requests # python -m pip install requests
 import turtle as t
 
 access_token_request = requests.get(f'${url}refresh_token?refresh_token={refresh_token}&result=string')
