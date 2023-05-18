@@ -32,6 +32,7 @@ const pythonscript = require('./downloads/python-script')
 
 /* middleware */
 const secureHttps = require("./middleware/secureHttps")
+const removeLastSlash = require("./middleware/removeLastSlash")
 
 const client_id = process.env.CLIENT_ID_SPOTIFY;
 const client_secret = process.env.CLIENT_SECRET_SPOTIFY;
@@ -41,17 +42,8 @@ const redirect_uri = process.env.REDIRECT_URI_SPOTIFY;
 app.set("trust proxy", true);
 app.use(secureHttps(dev))
 app.use(cookieParser())
+app.use(removeLastSlash)
 
-// app.use((req, res, next) => {
-//     if (req.protocol + '://' + req.get('host') + req.originalUrl === process.env.URL || req.path[req.path.length-1] !== "/")
-//         return next()
-    
-//     if (JSON.stringify(req.query) === "{}") {
-//         return res.redirect(req.protocol + '://' + req.get('host') + (req.path).slice(0, -1))
-//     } else {
-//         return res.redirect(req.protocol + '://' + req.get('host') + (req.path).slice(0, -1) + "?" + querystring.stringify(req.query))
-//     }
-// })
 
 app.use("/", express.static('./static'))
 
