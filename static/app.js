@@ -125,8 +125,15 @@ function open_close_top_bar() {
 
     isLateralBarOpen = !isLateralBarOpen
 }
-document.getElementById("top-bar-logo-userimg").addEventListener("click", open_close_top_bar)
-document.getElementById("lateral-bar-overlay").addEventListener("click", open_close_top_bar)
+
+try {
+    document.getElementById("top-bar-logo-userimg").addEventListener("click", open_close_top_bar)
+    document.getElementById("lateral-bar-overlay").addEventListener("click", open_close_top_bar)
+} catch (error) {}
+
+try {
+    document.getElementById("top-bar-logo-userimg-admin").addEventListener("click", () => window.location.href = "/admin")
+} catch (error) {}
 
 
 function apiKeyExpired() {
@@ -409,7 +416,8 @@ async function displayResult(timeRange = 0) {
     for (let i = 0; i < genres.length; i++) {
         const div = document.createElement("div")
         div.classList.add("genre")
-        if (i === 0)
+        
+        if (i === 0) /* panini di donato su marte 2062 */
             div.classList.add("genre-first")
         else if (i === 29)
             div.classList.add("genre-last")
@@ -444,7 +452,9 @@ async function displayResult(timeRange = 0) {
             img.classList.add("track-img", "pointer")
             try {
                 img.src = tracks.items[i].album.images[0].url
-            } catch (error) {}
+            } catch (error)  {
+                img.src = noImgSrc
+            }
             img.alt = "img"
             try {
                 img.addEventListener("click", () => window.open(tracks.items[i].album.external_urls.spotify))
@@ -577,7 +587,9 @@ async function displayResult(timeRange = 0) {
             try {
                 img.src = artists.items[i].images[0].url
                 img.addEventListener("click", () => window.open(artists.items[i].external_urls.spotify))
-            } catch (error) {}
+            } catch (error)  {
+                img.src = noImgSrc
+            }
             img.alt = "img"
             div.appendChild(img)
 
@@ -641,6 +653,12 @@ async function displayResult(timeRange = 0) {
                     img.classList.add("last-stream-track-img")
                     try {
                         img.src = lastStream[i].track.album.images[0].url
+                    } catch (error) {
+                        img.src = noImgSrc
+                    }
+                    try {
+                        img.addEventListener("click", () => window.open(lastStream[i].track.album.external_urls.spotify))
+                        img.classList.add("pointer")
                     } catch (error) {}
                     img.alt = "img"
                     left.appendChild(img)
@@ -733,6 +751,10 @@ async function displayResult(timeRange = 0) {
                         const title = document.createElement("div")
                         title.classList.add("last-stream-track-title")
                         title.innerText = lastStream[i].track.name
+                        try {
+                            title.addEventListener("click", () => window.open(lastStream[i].track.external_urls.spotify))
+                            title.classList.add("pointer")
+                        } catch (error) {}
                         txt.appendChild(title)
 
                         const titleLonger = document.createElement("div")
@@ -745,6 +767,10 @@ async function displayResult(timeRange = 0) {
                                     titleLonger.innerText += `, ${lastStream[i].track.artists[j].name}`
                         } catch (error) {}
                         titleLonger.innerText += " • " + lastStream[i].track.album.name
+                        try {
+                            titleLonger.addEventListener("click", () => window.open(lastStream[i].track.artists[0].external_urls.spotify))
+                            titleLonger.classList.add("pointer")
+                        } catch (error) {} 
                         txt.appendChild(titleLonger)
 
                     left.appendChild(txt)
@@ -883,16 +909,18 @@ let socket = io()
 
 socket.on("notifications", notifications => {
     console.log("notifications", notifications)
-    if (notifications.length > 0) {
-        document.getElementById("notification-dot").innerText = notifications.length
-        if (!isLateralBarOpen) {
-            document.getElementById("notification-dot").classList.add("active")
+    try { 
+        if (notifications.length > 0) {
+            document.getElementById("notification-dot").innerText = notifications.length
+            if (!isLateralBarOpen) {
+                document.getElementById("notification-dot").classList.add("active")
+            } else {
+                delete_all_notifications()
+            }
         } else {
-            delete_all_notifications()
+            document.getElementById("notification-dot").classList.remove("active")
         }
-    } else {
-        document.getElementById("notification-dot").classList.remove("active")
-    }
+    } catch (error) {}
     
 })
 

@@ -21,18 +21,19 @@ async function getUserInfo(access_token, refresh_token) {
 
     let snapshot
     try {
-        snapshot = await db.collection('users').doc(userInfo.id).collection("friends").get();
+        snapshot = await db.collection('users').doc(userInfo.id).collection("friends").count().get();
     } catch (error) {
         console.log("error database friends number", error)
         return { error }
     }
-    userInfo.friendsNum = snapshot._size || 0
+    userInfo.friendsNum = snapshot.data().count || 0
 
+    const lastAccess = Math.trunc(new Date().getTime()/1000)
 
     let dbUserInfo = {
         display_name: userInfo.display_name,
         email: userInfo.email,
-        lastAccess: Math.trunc(new Date().getTime()/1000)
+        lastAccess
     }
 
     delete dbUserInfo.friendsNum
@@ -52,6 +53,8 @@ async function getUserInfo(access_token, refresh_token) {
         console.log("error database userInfo", error)
         return { error }
     }
+
+    userInfo.lastAccess = lastAccess
 
     return userInfo
 }

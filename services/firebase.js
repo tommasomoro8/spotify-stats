@@ -1,5 +1,5 @@
 const { initializeApp, cert } = require('firebase-admin/app');
-const { getFirestore } = require('firebase-admin/firestore');
+const { getFirestore, FieldPath } = require('firebase-admin/firestore');
 
 const credentials = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
 
@@ -57,6 +57,20 @@ async function retrieveNotifications(userId) {
     return notifications
 }
 
+async function logError(status, error, url, userId) {
+
+    try {
+        await db.collection('log').add({
+            time: Math.trunc(new Date().getTime()/1000),
+            status,
+            user_reference: userId,
+            url,
+            error
+        })
+    } catch (error) {
+        console.log("error logging error XO", error)
+    }
+}
 
 
-module.exports = { db, addNotifications, retrieveNotifications }
+module.exports = { db, addNotifications, retrieveNotifications, logError, documentId: FieldPath.documentId }

@@ -2,6 +2,8 @@ const querystring = require("querystring")
 const request = require("request-promise-native")
 const cookieParser = require("cookie-parser")
 const cookie = require("cookie")
+const helmet = require('helmet')
+const rateLimit = require('express-rate-limit')
 
 const express = require("express")
 const app = express()
@@ -14,7 +16,7 @@ const io = new Server(server)
 require('dotenv').config()
 const dev = process.env.NODE_ENV === 'development'
 
-const { db } = require("./services/firebase")
+const { db, logError, documentId } = require("./services/firebase")
 const spotify = require("./services/spotify")
 const generateRandomString = require("./services/randString")
 
@@ -26,6 +28,7 @@ const notifications = require('./routes/notifications')
 const landingpage = require('./views/landing')
 const homepage = require('./views/home')
 const errorpage = require('./views/error')
+const adminpage = require('./views/admin')
 
 /* downloads */
 const pythonscript = require('./downloads/python-script')
@@ -38,12 +41,39 @@ const client_id = process.env.CLIENT_ID_SPOTIFY;
 const client_secret = process.env.CLIENT_SECRET_SPOTIFY;
 const redirect_uri = process.env.REDIRECT_URI_SPOTIFY;
 
+const connectionAlives = []
+const adminConnectionAlives = []
 
-app.set("trust proxy", true);
+app.use(helmet({
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://cdn.socket.io"],
+            imgSrc: ["'self'", "https://i.scdn.co", "https://upload.wikimedia.org"],
+            connectSrc: ["'self'", "https://api.spotify.com"],
+            scriptSrcAttr: ["'unsafe-inline'"],
+            mediaSrc: ["https://p.scdn.co"]
+        },
+    }
+}))
+app.use(rateLimit({
+    windowMs: 60 * 1000, // 1 minute
+    max: 100,
+    message: 'Too many requests from this IP, please try again later',
+    handler: (req, res) => {
+        res.setHeader("Content-Type", "text/html")
+        res.status(429).send('<b>429 - Too Many Requests</b><br>Too many requests from this IP, please try again later')
+    }
+}))
+app.set("trust proxy", true)
 app.use(secureHttps(dev))
 app.use(cookieParser())
 app.use(removeLastSlash)
 
+app.get("/error-test", async (req, res) => {
+    logError(420, "errore di prova", "/error-test", "tommasomoro05")
+    res.send("done")
+})
 
 app.use("/", express.static('./static'))
 
@@ -92,6 +122,7 @@ app.get('/login', (req, res) => {
     )
 })
 
+
 app.get('/logout', (req, res) => {
     res.clearCookie("access_token")
     res.clearCookie("refresh_token")
@@ -104,8 +135,10 @@ app.get('/callback', async (req, res) => {
     const code = req.query.code || null;
     const state = req.query.state || null;
   
-    if (state === null)
+    if (state === null) {
+        res.setHeader("Content-Type", "text/html")
         return res.status(401).send(errorpage("401 - Unauthorized", "state_mismatch", "401"))
+    }
 
     let tokens
     try {
@@ -113,7 +146,7 @@ app.get('/callback', async (req, res) => {
             method: 'post',
             url: 'https://accounts.spotify.com/api/token',
             headers: {
-              Authorization: 'Basic ' + (new Buffer.from(client_id + ':' + client_secret).toString('base64'))
+                Authorization: 'Basic ' + (new Buffer.from(client_id + ':' + client_secret).toString('base64'))
             },
             form: {
                 code,
@@ -124,6 +157,7 @@ app.get('/callback', async (req, res) => {
         })
     } catch (error) {
         console.log("error request tokens", error)
+        res.setHeader("Content-Type", "text/html")
         return res.status(500).send(errorpage("500 - Internal error", "That’s all we know.", "500"))
     }
 
@@ -163,8 +197,10 @@ app.get('/refresh_token', async (req, res) => {
             res.clearCookie("refresh_token")
         }
 
-        if (req.query.result === "string")
+        if (req.query.result === "string") {
+            res.setHeader("Content-Type", "text/html")
             return res.status(401).send(errorpage("401 - Unauthorized", "That’s all we know.", "401"))
+        }
 
         return res.redirect("/")
     }
@@ -176,8 +212,10 @@ app.get('/refresh_token', async (req, res) => {
             res.clearCookie("refresh_token")
         }
 
-        if (req.query.result === "string")
+        if (req.query.result === "string") {
+            res.setHeader("Content-Type", "text/html")
             return res.status(401).send(errorpage("401 - Unauthorized", "That’s all we know.", "401"))
+        }
 
         return res.redirect("/")
     }
@@ -192,6 +230,240 @@ app.get('/refresh_token', async (req, res) => {
         return res.send(tokens.access_token)
     
     return res.redirect("/")
+})
+
+
+app.get("/admin", async (req, res) => {
+    const access_token = req.cookies.access_token
+    const refresh_token = req.cookies.refresh_token
+
+    if (!access_token && !refresh_token)
+        return res.redirect("/login")
+
+    if (!access_token && refresh_token)
+        return res.redirect("/refresh_token?then=admin")
+
+
+    let userInfo = await spotify.getUserInfo(access_token)
+    if (userInfo.error) {
+        res.clearCookie("access_token")
+        return res.redirect("/refresh_token?then=admin")
+    }
+
+    if (userInfo.id !== process.env.ADMIN_SPOTIFY_ID) {
+        res.setHeader("Content-Type", "text/html")
+        return res.status(403).send(errorpage("403 - Forbidden", "Non hai i poteri per accedere a questa risorsa.", "403"))
+    }
+
+    if (req.query["user-activity"]) {
+        const friendId = req.query["user-activity"]
+    
+        let friend
+        try {
+            friend = await db.collection('users').doc(friendId).get()
+        } catch (error) {
+            console.log(error)
+            res.setHeader("Content-Type", "text/html")
+            return res.status(500).send(errorpage("500 - Internal error", "That’s all we know.", "500"))
+        }
+    
+        let friendData = friend.data()
+
+        if (!friendData) {
+            res.setHeader("Content-Type", "text/html")
+            return res.status(404).send(errorpage("404 - Utente non trovato", `Non esiste nessun utente con id "${friendId}"`, "404"))
+        }
+    
+        friendData.id = friendId
+    
+        let snapshot
+        try {
+            snapshot = await db.collection('users').doc(friendId).collection("friends").count().get();
+        } catch (error) {
+            console.log("error database friends number", error) 
+            res.setHeader("Content-Type", "text/html")
+            return res.status(500).send(errorpage("500 - Internal error", "That’s all we know.", "500"))
+        }
+        friendData.friendsNum = snapshot.data().count || 0
+    
+    
+        let tokens
+        try {
+            tokens = await request({
+                method: 'post',
+                url: 'https://accounts.spotify.com/api/token',
+                headers: {
+                    Authorization: 'Basic ' + (new Buffer.from(client_id + ':' + client_secret).toString('base64'))
+                },
+                form: {
+                    refresh_token: friendData.refresh_token,
+                    grant_type: 'refresh_token'
+                },
+                json: true
+            })
+        } catch (error) {
+            console.log("error request tokens", error)
+    
+            res.setHeader("Content-Type", "text/html")
+            return res.status(403).send(errorpage("403 - Forbidden", `Non potrai vedere l'attività di ${friendData.display_name} fin quando non eseguirà nuovamente il login.`, "403"))
+        }
+            
+        res.setHeader("Content-Type", "text/html")
+        return res.send(homepage(userInfo, friendData, tokens.access_token, true)) //user result
+    }
+
+
+    const data = {}
+
+    let totalConnectionsLen = 0
+    for (let i = 0; i < connectionAlives.length; i++)
+        totalConnectionsLen += connectionAlives[i].devicesConnected.length
+
+    data.userConnected = connectionAlives
+    data.userConnectedLen = connectionAlives.length
+    data.totalConnectionsLen = totalConnectionsLen
+
+    let usersCount
+    try {
+        usersCount = await db.collection('users').count().get();
+    } catch (error) {
+        console.log("error database usersCount", error)
+
+        res.setHeader("Content-Type", "text/html")
+        return res.status(500).send(errorpage("500 - Internal error", "That’s all we know", "500"))
+    }
+    data.usersCount = usersCount.data().count || 0
+
+
+    let lastUsersOffline
+    try {
+        lastUsersOffline = await db.collection("users").orderBy("lastAccess", "desc").limit(10).get();
+
+        const usersOfflineData = []
+
+        lastUsersOffline.forEach(lastUserOffline => {
+            let obj = lastUserOffline.data()
+            obj.id = lastUserOffline.id
+            delete obj.refresh_token
+
+            usersOfflineData.push(obj)
+        })
+        data.lastUsersOffline = usersOfflineData
+    } catch (error) {
+        console.log("error database lastUsersOffline", error)
+
+        res.setHeader("Content-Type", "text/html")
+        return res.status(500).send(errorpage("500 - Internal error", "That’s all we know", "500"))
+    }
+
+    res.setHeader("Content-Type", "text/html")
+    res.send(adminpage(data))
+})
+
+
+function emitToAdmins(event, message) {
+    for (let i = 0; i < adminConnectionAlives.length; i++)
+        adminConnectionAlives[i].socket.emit(event, message)
+}
+
+io.of("/admin").on('connection', async socket => {
+    let access_token
+    try {
+        access_token = cookie.parse(socket.handshake.headers.cookie).access_token
+    } catch (error) {
+        console.log(error)
+    }
+
+    if (access_token === undefined || access_token === null)
+        return socket.disconnect()
+    
+    let userInfo = await spotify.getUserInfo(access_token)
+    if (userInfo.error || userInfo.id !== process.env.ADMIN_SPOTIFY_ID)
+        return socket.disconnect()
+
+
+    let usersCountObserver
+    try {
+        usersCountObserver = db.collection('users').onSnapshot(querySnapshot => {
+            socket.emit("usersCount", querySnapshot._size)
+        }, error => {
+            console.log(`Encountered error: ${error}`)
+            socket.emit("usersCount", "internal error")
+        })
+    } catch (error) {
+        console.log(`Encountered error: ${error}`)
+        socket.emit("socket error", "internal error")
+    }
+
+
+    let logObserver
+    try {
+        logObserver = db.collection('log').orderBy('time', 'desc').limit(30).onSnapshot(querySnapshot => {
+            if (querySnapshot.empty)
+                return socket.emit("log", [])
+        
+            let log = []
+        
+            querySnapshot.forEach(querySnapshotLog => {
+                let logObj = querySnapshotLog.data()
+                logObj.id = querySnapshotLog.id
+                log.push(logObj)
+            })
+    
+            socket.emit("log", log)
+        }, error => {
+            console.log(`Encountered error: ${error}`)
+            socket.emit("log", "internal error")
+        })
+    } catch (error) {
+        console.log(`Encountered error: ${error}`)
+        socket.emit("socket error", "internal error")
+    }
+
+
+    // let lastUsersOfflineObserver
+    // try {//.orderBy("lastAccess", "desc").limit(10)
+    //     lastUsersOfflineObserver = db.collection("users").where(documentId(), 'not-in', ['tommasomoro05', 'nicolo.giomo']).onSnapshot(querySnapshot => {
+    //         if (querySnapshot.empty)
+    //             return socket.emit("lastUsersOffline", [])
+        
+    //         const usersOfflineData = []
+
+    //         querySnapshot.forEach(lastUserOffline => {
+    //             let obj = lastUserOffline.data()
+    //             obj.id = lastUserOffline.id
+    //             delete obj.refresh_token
+    
+    //             usersOfflineData.push(obj)
+    //         })
+    
+    //         socket.emit("lastUsersOffline", usersOfflineData)
+    //     }, error => {
+    //         console.log(`Encountered error: ${error}`)
+    //         socket.emit("lastUsersOffline", "internal error")
+    //     })
+    // } catch (error) {
+    //     console.log("error database lastUsersOffline", error)
+
+    //     res.setHeader("Content-Type", "text/html")
+    //     return res.status(500).send(errorpage("500 - Internal error", "That’s all we know", "500"))
+    // }
+
+    adminConnectionAlives.push({
+        id: socket.conn.id,
+        socket,
+        userInfo
+    })
+    
+    socket.on('disconnect', () => {
+        logObserver()
+        usersCountObserver()
+        //lastUsersOfflineObserver()
+
+        for (let i = 0; i < adminConnectionAlives.length; i++)
+            if (adminConnectionAlives[i].id === socket.conn.id)
+                adminConnectionAlives.splice(i, 1)
+    })
 })
 
 
@@ -210,9 +482,20 @@ app.get("/python-script-download", async (req, res) => {
         .send(pythonscript(refresh_token, userInfo))
 })
 
+function connectionAlivesSearch(id) {
+    for (let i = 0; i < connectionAlives.length; i++)
+        if (connectionAlives[i].id === id)
+            return { contains: true, index: i }
+    return { contains: false }
+}
 
-io.on('connection', async socket => {
-    const access_token = cookie.parse(socket.handshake.headers.cookie).access_token
+io.of("/").on('connection', async socket => {
+    let access_token
+    try {
+        access_token = cookie.parse(socket.handshake.headers.cookie).access_token
+    } catch (error) {
+        console.log(error)
+    }
 
     if (access_token === undefined || access_token === null)
         return socket.disconnect()
@@ -220,7 +503,7 @@ io.on('connection', async socket => {
     let userInfo = await spotify.getUserInfo(access_token)
     if (userInfo.error)
         return socket.disconnect()
-
+    
     let notificationsObserver
     let friendsObserver
     let friendsInvitedObserver
@@ -368,13 +651,121 @@ io.on('connection', async socket => {
         console.log("socket error", error)
     }
     
+    const deviceConnected = {
+        id: socket.conn.id,
+        client: socket.handshake.headers
+    }
+
+    try {
+        delete deviceConnected.client.cookie
+    } catch (e) {}
+
+    let connectionAlivesSearchRes = connectionAlivesSearch(userInfo.id)
+    if (!connectionAlivesSearchRes.contains) {
+        const userConnected = {
+            id: userInfo.id,
+            userInfo,
+            connectionTime: Math.trunc((new Date()).getTime()/1000),
+            devicesConnected: [deviceConnected]
+        }
+
+        connectionAlives.push(userConnected)
+        
+        emitToAdmins("connectionAlives", {
+            event: "connection",
+            action: "add-userConnected",
+            body: {
+                userConnected
+            }
+        })
+
+        // console.log(connectionAlives)
+
+        // connectionAlives.sort((a, b) => a.userInfo.lastAccess - b.userInfo.lastAccess);
+
+        // let lastUsersOffline
+        // try {
+        //     lastUsersOffline = await db.collection("users")
+        //         .orderBy("lastAccess", "desc")
+        //         .limit(10)
+        //         .startAt(connectionAlives[0].userInfo.lastAccess)
+        //         .get()
+
+        //     if (!lastUsersOffline.empty) {
+        //         const usersOfflineData = []
+    
+        //         lastUsersOffline.forEach(lastUserOffline => {
+        //             let obj = lastUserOffline.data()
+        //             obj.id = lastUserOffline.id
+        //             delete obj.refresh_token
+        
+        //             usersOfflineData.push(obj)
+        //         })
+
+        //         emitToAdmins("lastUsersOffline", usersOfflineData)
+        //         console.log(usersOfflineData)
+        //     }
+        // } catch (e) {
+        //     console.log("lastUsersOffline connection", e)
+        // }
+
+    } else {
+        connectionAlives[connectionAlivesSearchRes.index].devicesConnected.push(deviceConnected)
+
+        emitToAdmins("connectionAlives", {
+            event: "connection",
+            action: "add-deviceConnected-to-userConnected",
+            body: {
+                userConnected: connectionAlives[connectionAlivesSearchRes.index],
+                deviceConnected: deviceConnected
+            }
+        })
+    }
+
+
+
     socket.on('disconnect', () => {
         notificationsObserver()
         friendsObserver()
         friendsInvitedObserver()
         friendsInvitedByObserver()
+
+        let connectionAlivesSearchRes = connectionAlivesSearch(userInfo.id)
+        if (connectionAlivesSearchRes.contains) {
+            if (connectionAlives[connectionAlivesSearchRes.index].devicesConnected.length === 1) {
+                emitToAdmins("connectionAlives", {
+                    event: "disconnect",
+                    action: "remove-userConnected",
+                    body: {
+                        userConnected: connectionAlives[connectionAlivesSearchRes.index]
+                    }
+                })
+
+                connectionAlives.splice(connectionAlivesSearchRes.index, 1)
+            }
+            else {
+                for (let i = 0; i < connectionAlives[connectionAlivesSearchRes.index].devicesConnected.length; i++) {
+                    if (connectionAlives[connectionAlivesSearchRes.index].devicesConnected[i].id === socket.conn.id) {
+
+                        const deviceConnected = connectionAlives[connectionAlivesSearchRes.index].devicesConnected[i]
+
+                        connectionAlives[connectionAlivesSearchRes.index].devicesConnected.splice(i, 1)
+
+                        emitToAdmins("connectionAlives", {
+                            event: "disconnect",
+                            action: "remove-deviceConnected-in-userConnected",
+                            body: {
+                                userConnected: connectionAlives[connectionAlivesSearchRes.index],
+                                deviceConnected
+                            }
+                        })
+                    }
+                }
+            }
+        }
     })
 })
+
 
 app.get('/:friendId', async (req, res) => {
     const friendId = req.params.friendId
@@ -390,16 +781,22 @@ app.get('/:friendId', async (req, res) => {
         userInfo.imageUrl = userInfo.images[0].url
     } catch (e) {}
 
+    if (friendId === userInfo.id)
+        return res.redirect("/")
+
     let check
     try {
         check = await db.collection('users').doc(userInfo.id).collection('friends').doc(friendId).get()
     } catch (error) {
         console.log(error)
+        res.setHeader("Content-Type", "text/html")
         return res.status(500).send(errorpage("500 - Internal error", "That’s all we know.", "500"))
     }
 
-    if (!check.exists)
+    if (!check.exists) {
+        res.setHeader("Content-Type", "text/html")
         return res.status(403).send(errorpage("403 - Forbidden", `${friendId} non è tuo amico o non esiste.`, "403"))
+    }
 
 
     let friend
@@ -407,6 +804,7 @@ app.get('/:friendId', async (req, res) => {
         friend = await db.collection('users').doc(friendId).get()
     } catch (error) {
         console.log(error)
+        res.setHeader("Content-Type", "text/html")
         return res.status(500).send(errorpage("500 - Internal error", "That’s all we know.", "500"))
     }
 
@@ -416,12 +814,13 @@ app.get('/:friendId', async (req, res) => {
 
     let snapshot
     try {
-        snapshot = await db.collection('users').doc(friendId).collection("friends").get();
+        snapshot = await db.collection('users').doc(friendId).collection("friends").count().get();
     } catch (error) {
         console.log("error database friends number", error) 
+        res.setHeader("Content-Type", "text/html")
         return res.status(500).send(errorpage("500 - Internal error", "That’s all we know.", "500"))
     }
-    friendData.friendsNum = snapshot._size || 0
+    friendData.friendsNum = snapshot.data().count || 0
 
 
     let tokens
@@ -440,7 +839,7 @@ app.get('/:friendId', async (req, res) => {
         })
     } catch (error) {
         console.log("error request tokens", error)
-
+        res.setHeader("Content-Type", "text/html")
         return res.status(403).send(errorpage("403 - Forbidden", `Non potrai vedere l'attività di ${friendData.display_name} fin quando non eseguirà nuovamente il login.`, "403"))
     }
         
@@ -451,12 +850,14 @@ app.get('/:friendId', async (req, res) => {
 
 app.get("*", (req, res) => {
     res.setHeader("Content-Type", "text/html")
-    res.status(404).send(errorpage("404 - Pagina non trovata", "E' tutto quello che sappiamo.", "404"))
+    res.status(404).send(errorpage("404 - Pagina non trovata", "E' tutto quello che sappiamo", "404"))
 })
 
 app.use((err, req, res, next) => {
     console.error(err.stack)
-    res.status(500).send(errorpage("500 - Internal error", "Something broke!", "500"))
+
+    res.setHeader("Content-Type", "text/html")
+    res.status(500).send(errorpage("500 - Internal error", "That’s all we know", "500"))
 })
 
 const port = process.env.PORT || 3000

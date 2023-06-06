@@ -1129,6 +1129,17 @@ main {
     z-index: 300;
 }
 
+#top-bar-logo-userimg-admin {
+    position: relative;
+    cursor: pointer;
+    z-index: 300;
+    background-color: var(--darkgreen-bg);
+    padding: 12px 25px;
+    color: var(--lightgreen-bg);
+    border-radius: 20px;
+    font-weight: 600;
+}
+
 #notification-dot {
     position: absolute;
     top: -3px;
@@ -1340,11 +1351,6 @@ main {
     display:none;
 }
 
-
-.musicPlayingAnimation {
-    animation: musicPlaying 1s ease 0s infinite normal forwards;
-}
-
 @keyframes musicPlaying {
 	0% {
 		transform: translate(0);
@@ -1369,4 +1375,9 @@ main {
 	100% {
 		transform: translate(0);
 	}
+}
+
+
+.musicPlayingAnimation {
+    animation: musicPlaying 1s ease 0s infinite normal forwards!important;
 }

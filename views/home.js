@@ -1,4 +1,4 @@
-module.exports = (userInfo, contentInfo, access_token) => {
+module.exports = (userInfo, contentInfo, access_token, admin = false) => {
     // console.log(userInfo.id)
     // console.log(contentInfo.id)
     return /*html*/`
@@ -19,13 +19,24 @@ module.exports = (userInfo, contentInfo, access_token) => {
                 <div id="top-bar">
                     <span id="top-bar-logo-text" class="pointer">
                         <img class="top-bar-img" id="top-bar-logo" src="spotify-logo.png" alt="logo">
-                        <div id="top-bar-text">Spotify Stats</div>
-                    </span>
-    
-                    <span id="top-bar-logo-userimg">
-                        <img class="top-bar-img" id="top-bar-userimg" src="${userInfo.imageUrl || "https://upload.wikimedia.org/wikipedia/commons/8/89/Portrait_Placeholder.png"}" alt="user-img">
-                        <div id="notification-dot">1</div>
-                    </span>
+                        <div id="top-bar-text">${(!admin) ? "Spotify Stats" : "Spotify Stats Admin"}</div>
+                    </span>          
+                    ${(()=>{
+                        if (admin) {
+                            return /*html*/`
+                                <span id="top-bar-logo-userimg-admin">
+                                    Torna alla console
+                                </span>
+                            `
+                        } else {
+                            return /*html*/`
+                                <span id="top-bar-logo-userimg">
+                                    <img class="top-bar-img" id="top-bar-userimg" src="${userInfo.imageUrl || "https://upload.wikimedia.org/wikipedia/commons/8/89/Portrait_Placeholder.png"}" alt="user-img">
+                                    <div id="notification-dot">1</div>
+                                </span>
+                            `
+                        }
+                    })()}
                 </div>
                 <div id="top-main">
                     <div id="top-main-content" class="row">
