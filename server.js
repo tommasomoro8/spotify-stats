@@ -362,6 +362,80 @@ app.get("/admin", async (req, res) => {
     res.send(adminpage(data, access_token))
 })
 
+app.post("/admin/hide-error/:id", async (req, res) => {
+    const error_id = req.params.id
+    const access_token = req.cookies.access_token
+    const refresh_token = req.cookies.refresh_token
+
+    if (!error_id)
+        return res.sendStatus(400)
+
+    if (!access_token && !refresh_token)
+        return res.sendStatus(401)
+
+    if (!access_token && refresh_token)
+        return res.redirect("/refresh_token?then=admin/hide-error/" + error_id)
+
+
+    let userInfo = await spotify.getUserInfo(access_token)
+    if (userInfo.error) {
+        res.clearCookie("access_token")
+        return res.redirect("/refresh_token?then=admin/hide-error/" + error_id)
+    }
+
+    if (userInfo.id !== process.env.ADMIN_SPOTIFY_ID) {
+        logError(403, "admin hide-error access attempt", req.path, userInfo.id)
+        return res.sendStatus(403)
+    }
+
+    try {
+        await db.collection('log').doc(error_id).set({
+            hide: true
+        }, { merge: true });
+    } catch (error) {
+        logError(500, "log hide database error", req.path, userInfo.id, error)
+        return res.sendStatus(500)
+    }
+
+    res.sendStatus(200)
+})
+
+app.post("/admin/delete-error/:id", async (req, res) => {
+    const error_id = req.params.id
+    const access_token = req.cookies.access_token
+    const refresh_token = req.cookies.refresh_token
+
+    if (!error_id)
+        return res.sendStatus(400)
+
+    if (!access_token && !refresh_token)
+        return res.sendStatus(401)
+
+    if (!access_token && refresh_token)
+        return res.redirect("/refresh_token?then=admin/delete-error/" + error_id)
+
+
+    let userInfo = await spotify.getUserInfo(access_token)
+    if (userInfo.error) {
+        res.clearCookie("access_token")
+        return res.redirect("/refresh_token?then=admin/delete-error/" + error_id)
+    }
+
+    if (userInfo.id !== process.env.ADMIN_SPOTIFY_ID) {
+        logError(403, "admin delete-error access attempt", req.path, userInfo.id)
+        return res.sendStatus(403)
+    }
+
+
+    try {
+        await db.collection('log').doc(error_id).delete()
+    } catch (error) {
+        logError(500, "log delete database error", req.path, userInfo.id, error)
+        return res.sendStatus(500)
+    }
+
+    res.sendStatus(200)
+})
 
 function emitToAdmins(event, message) {
     for (let i = 0; i < adminConnectionAlives.length; i++)

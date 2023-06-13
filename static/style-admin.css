@@ -563,25 +563,43 @@
 .divunderActionsHide {
     width: 20px;
     height: 20px;
-    background-color: blue;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-right: 10px;
+}
 
-    background-image: url("hide.svg");
-    background-repeat: no-repeat;
-    object-fit: cover;
-    background-size: contain;
-
+.divunderActionsHideImg {
+    width: 20px;
+    height: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    object-fit: contain;
+    filter: invert(1);
 }
 
 .divunderActionsDelete {
     width: 20px;
     height: 20px;
-    background-color: red;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-right: 3px;
+}
 
-    background-image: url("trash.svg");
-    background-repeat: no-repeat;
-    background-size: contain;
-    
+.divunderActionsDelete:hover, .divunderActionsHide:hover {
+    cursor: pointer;
+}
 
+.divunderActionsDeleteImg {
+    width: 20px;
+    height: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    object-fit: contain;
+    filter: invert(1);
 }
 
 .divunderActionsHide:hover, .divunderActionsDelete:hover {

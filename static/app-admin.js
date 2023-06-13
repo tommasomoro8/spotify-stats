@@ -188,13 +188,17 @@ function addErrorLog(error) {
 
                         const divunderUserReferenceSpan2 = document.createElement("span")
                         divunderUserReferenceSpan2.classList.add("txt-grey")
-                        divunderUserReferenceSpan2.innerText = "User Reference: "
+                        divunderUserReferenceSpan2.innerHTML = "User Reference:&nbsp"
                         if (error.user_reference)
                             divunderUserReferenceSpan1row.append(divunderUserReferenceSpan2)
 
                         const divunderUserReferenceSpan3 = document.createElement("span")
                         divunderUserReferenceSpan3.id = `${error.user_reference}-action`
                         divunderUserReferenceSpan3.innerText = error.user_reference
+                        divunderUserReferenceSpan3.addEventListener("click", () => {
+                            window.location.href = "/admin?user-activity=" + error.user_reference
+                        })
+                        divunderUserReferenceSpan3.classList.add("pointer")
                         if (error.user_reference)
                             divunderUserReferenceSpan1row.append(divunderUserReferenceSpan3)
 
@@ -217,14 +221,28 @@ function addErrorLog(error) {
 
                 const divunderActionsHide = document.createElement("div")
                 divunderActionsHide.classList.add("divunderActionsHide")
-                divunderActionsHide.addEventListener("click", () => {
-                    console.warn("hide", error.id, "SEND REQUEST")
+                divunderActionsHide.addEventListener("click", async () => {
                     div.classList.remove("open", "show")
                     setTimeout(() => div.remove(), 1500)
+
+                    let myHeaders = new Headers();
+                    myHeaders.append("Content-Type", "application/json");
+                    
+                    let result = await fetch(`/admin/hide-error/${error.id}`, {
+                        method: 'POST',
+                        headers: myHeaders,
+                        redirect: "follow"
+                    })
+
+                    console.log(result)
+                    
+                    if (result.status !== 200)
+                        return console.error("l'errore " + error.id + " non è stato nascosto per un errore interno del server")
                 })
 
-                    const divunderActionsHideImg = document.createElement("div")
-                    divunderActionsHideImg.classList.add("divunderActionsHide")
+                    const divunderActionsHideImg = document.createElement("img")
+                    divunderActionsHideImg.classList.add("divunderActionsHideImg")
+                    divunderActionsHideImg.src = "hide.svg"
                     divunderActionsHide.append(divunderActionsHideImg)
 
                 divunderActions.append(divunderActionsHide)
@@ -232,11 +250,30 @@ function addErrorLog(error) {
 
                 const divunderActionsDelete = document.createElement("div")
                 divunderActionsDelete.classList.add("divunderActionsDelete")
-                divunderActionsDelete.addEventListener("click", () => {
-                    console.warn("delete", error.id, "SEND REQUEST")
+                divunderActionsDelete.addEventListener("click", async () => {
                     div.classList.remove("open", "show")
                     setTimeout(() => div.remove(), 1500)
+
+                    let myHeaders = new Headers();
+                    myHeaders.append("Content-Type", "application/json");
+                    
+                    let result = await fetch(`/admin/delete-error/${error.id}`, {
+                        method: 'POST',
+                        headers: myHeaders,
+                        redirect: "follow"
+                    })
+
+                    console.log(result)
+                    
+                    if (result.status !== 200)
+                        return console.error("l'errore " + error.id + " non è stato nascosto per un errore interno del server")
                 })
+
+                    const divunderActionsDeleteImg = document.createElement("img")
+                    divunderActionsDeleteImg.classList.add("divunderActionsDeleteImg")
+                    divunderActionsDeleteImg.src = "trash.svg"
+                    divunderActionsDelete.append(divunderActionsDeleteImg)
+
                 divunderActions.append(divunderActionsDelete)
 
             divunder.append(divunderActions)
