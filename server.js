@@ -16,7 +16,7 @@ const io = new Server(server)
 require('dotenv').config()
 const dev = process.env.NODE_ENV === 'development'
 
-const { db, logError, documentId } = require("./services/firebase")
+const { db, logError } = require("./services/firebase")
 const spotify = require("./services/spotify")
 const generateRandomString = require("./services/randString")
 
@@ -61,6 +61,8 @@ app.use(rateLimit({
     max: 100,
     message: 'Too many requests from this IP, please try again later',
     handler: (req, res) => {
+        logError(429, "Too Many Requests", req.path, req.ip)
+
         res.setHeader("Content-Type", "text/html")
         res.status(429).send('<b>429 - Too Many Requests</b><br>Too many requests from this IP, please try again later')
     }
@@ -69,11 +71,6 @@ app.set("trust proxy", true)
 app.use(secureHttps(dev))
 app.use(cookieParser())
 app.use(removeLastSlash)
-
-app.get("/error-test", async (req, res) => {
-    logError(420, "errore di prova", "/error-test", "tommasomoro05")
-    res.send("done")
-})
 
 app.use("/", express.static('./static'))
 
@@ -136,6 +133,8 @@ app.get('/callback', async (req, res) => {
     const state = req.query.state || null;
   
     if (state === null) {
+        logError(401, "state_mismatch", req.path, "")
+
         res.setHeader("Content-Type", "text/html")
         return res.status(401).send(errorpage("401 - Unauthorized", "state_mismatch", "401"))
     }
@@ -156,7 +155,8 @@ app.get('/callback', async (req, res) => {
             json: true
         })
     } catch (error) {
-        console.log("error request tokens", error)
+        logError(500, "error request tokens", req.path, "", error)
+
         res.setHeader("Content-Type", "text/html")
         return res.status(500).send(errorpage("500 - Internal error", "That’s all we know.", "500"))
     }
@@ -251,6 +251,8 @@ app.get("/admin", async (req, res) => {
     }
 
     if (userInfo.id !== process.env.ADMIN_SPOTIFY_ID) {
+        logError(403, "admin panel access attempt", req.path, userInfo.id)
+        
         res.setHeader("Content-Type", "text/html")
         return res.status(403).send(errorpage("403 - Forbidden", "Non hai i poteri per accedere a questa risorsa.", "403"))
     }
@@ -262,7 +264,8 @@ app.get("/admin", async (req, res) => {
         try {
             friend = await db.collection('users').doc(friendId).get()
         } catch (error) {
-            console.log(error)
+            logError(500, "admin user-activity error", req.path, userInfo.id, error)
+
             res.setHeader("Content-Type", "text/html")
             return res.status(500).send(errorpage("500 - Internal error", "That’s all we know.", "500"))
         }
@@ -280,7 +283,8 @@ app.get("/admin", async (req, res) => {
         try {
             snapshot = await db.collection('users').doc(friendId).collection("friends").count().get();
         } catch (error) {
-            console.log("error database friends number", error) 
+            logError(500, "admin database user-activity friends number", req.path, userInfo.id, error)
+            
             res.setHeader("Content-Type", "text/html")
             return res.status(500).send(errorpage("500 - Internal error", "That’s all we know.", "500"))
         }
@@ -302,8 +306,6 @@ app.get("/admin", async (req, res) => {
                 json: true
             })
         } catch (error) {
-            console.log("error request tokens", error)
-    
             res.setHeader("Content-Type", "text/html")
             return res.status(403).send(errorpage("403 - Forbidden", `Non potrai vedere l'attività di ${friendData.display_name} fin quando non eseguirà nuovamente il login.`, "403"))
         }
@@ -327,7 +329,7 @@ app.get("/admin", async (req, res) => {
     try {
         usersCount = await db.collection('users').count().get();
     } catch (error) {
-        console.log("error database usersCount", error)
+        logError(500, "error database usersCount", req.path, userInfo.id, error)
 
         res.setHeader("Content-Type", "text/html")
         return res.status(500).send(errorpage("500 - Internal error", "That’s all we know", "500"))
@@ -350,14 +352,14 @@ app.get("/admin", async (req, res) => {
         })
         data.lastUsersOffline = usersOfflineData
     } catch (error) {
-        console.log("error database lastUsersOffline", error)
+        logError(500, "error database lastUsersOffline", req.path, userInfo.id, error)
 
         res.setHeader("Content-Type", "text/html")
         return res.status(500).send(errorpage("500 - Internal error", "That’s all we know", "500"))
     }
 
     res.setHeader("Content-Type", "text/html")
-    res.send(adminpage(data))
+    res.send(adminpage(data, access_token))
 })
 
 
@@ -371,15 +373,17 @@ io.of("/admin").on('connection', async socket => {
     try {
         access_token = cookie.parse(socket.handshake.headers.cookie).access_token
     } catch (error) {
-        console.log(error)
+        logError(400, "websocket admin panel access attempt without access_token", "websocket /admin", "", error)
     }
 
     if (access_token === undefined || access_token === null)
         return socket.disconnect()
     
     let userInfo = await spotify.getUserInfo(access_token)
-    if (userInfo.error || userInfo.id !== process.env.ADMIN_SPOTIFY_ID)
+    if (userInfo.error || userInfo.id !== process.env.ADMIN_SPOTIFY_ID) {
+        logError(403, "websocket admin panel access attempt", "websocket /admin", "", userInfo.error)
         return socket.disconnect()
+    }
 
 
     let usersCountObserver
@@ -387,11 +391,11 @@ io.of("/admin").on('connection', async socket => {
         usersCountObserver = db.collection('users').onSnapshot(querySnapshot => {
             socket.emit("usersCount", querySnapshot._size)
         }, error => {
-            console.log(`Encountered error: ${error}`)
+            logError(500, "websocket admin panel usersCountObserver", "websocket /admin", userInfo.id, error)
             socket.emit("usersCount", "internal error")
         })
     } catch (error) {
-        console.log(`Encountered error: ${error}`)
+        logError(500, "websocket admin panel usersCountObserver", "websocket /admin", userInfo.id, error)
         socket.emit("socket error", "internal error")
     }
 
@@ -407,47 +411,19 @@ io.of("/admin").on('connection', async socket => {
             querySnapshot.forEach(querySnapshotLog => {
                 let logObj = querySnapshotLog.data()
                 logObj.id = querySnapshotLog.id
-                log.push(logObj)
+                if (!logObj.hide)
+                    log.push(logObj)
             })
     
             socket.emit("log", log)
         }, error => {
-            console.log(`Encountered error: ${error}`)
+            logError(500, "websocket admin panel logObserver", "websocket /admin", userInfo.id, error)
             socket.emit("log", "internal error")
         })
     } catch (error) {
-        console.log(`Encountered error: ${error}`)
+        logError(500, "websocket admin panel logObserver", "websocket /admin", userInfo.id, error)
         socket.emit("socket error", "internal error")
     }
-
-
-    // let lastUsersOfflineObserver
-    // try {//.orderBy("lastAccess", "desc").limit(10)
-    //     lastUsersOfflineObserver = db.collection("users").where(documentId(), 'not-in', ['tommasomoro05', 'nicolo.giomo']).onSnapshot(querySnapshot => {
-    //         if (querySnapshot.empty)
-    //             return socket.emit("lastUsersOffline", [])
-        
-    //         const usersOfflineData = []
-
-    //         querySnapshot.forEach(lastUserOffline => {
-    //             let obj = lastUserOffline.data()
-    //             obj.id = lastUserOffline.id
-    //             delete obj.refresh_token
-    
-    //             usersOfflineData.push(obj)
-    //         })
-    
-    //         socket.emit("lastUsersOffline", usersOfflineData)
-    //     }, error => {
-    //         console.log(`Encountered error: ${error}`)
-    //         socket.emit("lastUsersOffline", "internal error")
-    //     })
-    // } catch (error) {
-    //     console.log("error database lastUsersOffline", error)
-
-    //     res.setHeader("Content-Type", "text/html")
-    //     return res.status(500).send(errorpage("500 - Internal error", "That’s all we know", "500"))
-    // }
 
     adminConnectionAlives.push({
         id: socket.conn.id,
@@ -458,7 +434,6 @@ io.of("/admin").on('connection', async socket => {
     socket.on('disconnect', () => {
         logObserver()
         usersCountObserver()
-        //lastUsersOfflineObserver()
 
         for (let i = 0; i < adminConnectionAlives.length; i++)
             if (adminConnectionAlives[i].id === socket.conn.id)
@@ -494,15 +469,17 @@ io.of("/").on('connection', async socket => {
     try {
         access_token = cookie.parse(socket.handshake.headers.cookie).access_token
     } catch (error) {
-        console.log(error)
+        logError(400, "websocket access attempt without access_token", "websocket", "", error)
     }
 
     if (access_token === undefined || access_token === null)
         return socket.disconnect()
     
     let userInfo = await spotify.getUserInfo(access_token)
-    if (userInfo.error)
+    if (userInfo.error) {
+        logError(403, "websocket access attempt", "websocket", "", userInfo.error)
         return socket.disconnect()
+    }
     
     let notificationsObserver
     let friendsObserver
@@ -525,7 +502,7 @@ io.of("/").on('connection', async socket => {
 
             socket.emit("notifications", notifications)
         }, error => {
-            console.log(`Encountered error: ${error}`)
+            logError(500, "websocket notificationsObserver", "websocket", userInfo.id, error)
             socket.emit("notifications", "internal error")
         })
 
@@ -544,12 +521,12 @@ io.of("/").on('connection', async socket => {
                 try {
                     friend = await db.collection('users').doc(doc.id).get();
                 } catch (error) {
-                    console.log("error get friend", error)
+                    logError(500, "websocket error get friend", "websocket", userInfo.id, error)
                     socket.emit("friends", "internal error")
                 }
 
                 if (!friend.exists) {
-                    console.log("error friend !exists")
+                    logError(400, "websocket friend does not exists", "websocket", userInfo.id)
                     socket.emit("friends", "internal error")
                 }
 
@@ -563,7 +540,7 @@ io.of("/").on('connection', async socket => {
                     socket.emit("friends", friends)
             })
         }, error => {
-            console.log(`Encountered error: ${error}`)
+            logError(500, "websocket friendsObserver error", "websocket", userInfo.id, error)
             socket.emit("friends", "internal error")
         })
 
@@ -582,12 +559,12 @@ io.of("/").on('connection', async socket => {
                 try {
                     friend = await db.collection('users').doc(doc.id).get();
                 } catch (error) {
-                    console.log("error get friend", error)
+                    logError(500, "websocket error get friend", "websocket", userInfo.id, error)
                     socket.emit("friendsInvited", "internal error")
                 }
 
                 if (!friend.exists) {
-                    console.log("error friend !exists")
+                    logError(400, "websocket friend does not exists", "websocket", userInfo.id)
                     socket.emit("friendsInvited", "internal error")
                 }
 
@@ -603,7 +580,7 @@ io.of("/").on('connection', async socket => {
                     socket.emit("friendsInvited", friends)
             })
         }, error => {
-            console.log(`Encountered error: ${error}`)
+            logError(500, "websocket friendsInvitedObserver error", "websocket", userInfo.id, error)
             socket.emit("friendsInvited", "internal error")
         })
 
@@ -622,12 +599,12 @@ io.of("/").on('connection', async socket => {
                 try {
                     friend = await db.collection('users').doc(doc.id).get();
                 } catch (error) {
-                    console.log("error get friend", error)
+                    logError(500, "websocket error get friend", "websocket", userInfo.id, error)
                     socket.emit("friendsInvitedBy", "internal error")
                 }
 
                 if (!friend.exists) {
-                    console.log("error friend !exists")
+                    logError(400, "websocket friend does not exists", "websocket", userInfo.id)
                     socket.emit("friendsInvitedBy", "internal error")
                 }
 
@@ -643,7 +620,7 @@ io.of("/").on('connection', async socket => {
                     socket.emit("friendsInvitedBy", friends)
             })
         }, error => {
-            console.log(`Encountered error: ${error}`)
+            logError(500, "websocket friendsInvitedByObserver error", "websocket", userInfo.id, error)
             socket.emit("friendsInvitedBy", "internal error")
         })
         
@@ -678,37 +655,6 @@ io.of("/").on('connection', async socket => {
                 userConnected
             }
         })
-
-        // console.log(connectionAlives)
-
-        // connectionAlives.sort((a, b) => a.userInfo.lastAccess - b.userInfo.lastAccess);
-
-        // let lastUsersOffline
-        // try {
-        //     lastUsersOffline = await db.collection("users")
-        //         .orderBy("lastAccess", "desc")
-        //         .limit(10)
-        //         .startAt(connectionAlives[0].userInfo.lastAccess)
-        //         .get()
-
-        //     if (!lastUsersOffline.empty) {
-        //         const usersOfflineData = []
-    
-        //         lastUsersOffline.forEach(lastUserOffline => {
-        //             let obj = lastUserOffline.data()
-        //             obj.id = lastUserOffline.id
-        //             delete obj.refresh_token
-        
-        //             usersOfflineData.push(obj)
-        //         })
-
-        //         emitToAdmins("lastUsersOffline", usersOfflineData)
-        //         console.log(usersOfflineData)
-        //     }
-        // } catch (e) {
-        //     console.log("lastUsersOffline connection", e)
-        // }
-
     } else {
         connectionAlives[connectionAlivesSearchRes.index].devicesConnected.push(deviceConnected)
 
@@ -788,7 +734,8 @@ app.get('/:friendId', async (req, res) => {
     try {
         check = await db.collection('users').doc(userInfo.id).collection('friends').doc(friendId).get()
     } catch (error) {
-        console.log(error)
+        logError(500, "check error", req.path, userInfo.id, error)
+
         res.setHeader("Content-Type", "text/html")
         return res.status(500).send(errorpage("500 - Internal error", "That’s all we know.", "500"))
     }
@@ -803,7 +750,8 @@ app.get('/:friendId', async (req, res) => {
     try {
         friend = await db.collection('users').doc(friendId).get()
     } catch (error) {
-        console.log(error)
+        logError(500, "friend retrieve error", req.path, userInfo.id, error)
+
         res.setHeader("Content-Type", "text/html")
         return res.status(500).send(errorpage("500 - Internal error", "That’s all we know.", "500"))
     }
@@ -816,7 +764,8 @@ app.get('/:friendId', async (req, res) => {
     try {
         snapshot = await db.collection('users').doc(friendId).collection("friends").count().get();
     } catch (error) {
-        console.log("error database friends number", error) 
+        logError(500, "error database friends number", req.path, userInfo.id, error)
+
         res.setHeader("Content-Type", "text/html")
         return res.status(500).send(errorpage("500 - Internal error", "That’s all we know.", "500"))
     }
@@ -838,7 +787,8 @@ app.get('/:friendId', async (req, res) => {
             json: true
         })
     } catch (error) {
-        console.log("error request tokens", error)
+        logError(500, "error request friend token", req.path, userInfo.id, error)
+
         res.setHeader("Content-Type", "text/html")
         return res.status(403).send(errorpage("403 - Forbidden", `Non potrai vedere l'attività di ${friendData.display_name} fin quando non eseguirà nuovamente il login.`, "403"))
     }
@@ -850,11 +800,12 @@ app.get('/:friendId', async (req, res) => {
 
 app.get("*", (req, res) => {
     res.setHeader("Content-Type", "text/html")
-    res.status(404).send(errorpage("404 - Pagina non trovata", "E' tutto quello che sappiamo", "404"))
+    res.status(404).send(errorpage("404 - Pagina non trovata", "E' tutto quello che sappiamo", "404", req))
 })
 
 app.use((err, req, res, next) => {
     console.error(err.stack)
+    logError(500, "fatal error", req.path, "", err.stack)
 
     res.setHeader("Content-Type", "text/html")
     res.status(500).send(errorpage("500 - Internal error", "That’s all we know", "500"))

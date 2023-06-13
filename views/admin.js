@@ -1,4 +1,4 @@
-module.exports = (data) => {
+module.exports = (data, access_token) => {
     return /*html*/`
     <!DOCTYPE html>
     <html lang="it">
@@ -25,25 +25,25 @@ module.exports = (data) => {
                     <div id="top-main-content" class="row">
                         <div id="top-main-content-text" class="admin">
                             <div class="admin" id="top-main-name">
-                                <div><span id="userConnectedLen-live"></span> persone online</div>
+                                <div><span id="userConnectedLen-live"></span> <span id="userConnectedLen-live-persone-a">persone</span> online</div>
                                 <span style="position: relative;">
                                     <div class="live-dot"></div>
                                     <div class="live-dot-bg"></div>
                                 </span>
                             </div>
-                            <div id="top-main-email"><span id="totalConnectionsLen-live"></span> client connessi</div>
-                            <div id="top-main-friends"><span id="usersCount-live"></span> account registrati</div>
+                            <div id="top-main-email"><span id="totalConnectionsLen-live"></span> client <span id="userConnectedLen-live-connessi-o">connessi</span></div>
+                            <div id="top-main-friends"><span id="usersCount-live"></span> account <span id="userConnectedLen-live-registrati-o">registrati</span></div>
                         </div>
                     </div>
                     <div id="top-left-img-container">
-                        <img class="top-left-img img-1" src="https://i.scdn.co/image/ab6775700000ee856f5e2f3ce7eb0b3431099331" alt="img">
-                        <img class="top-left-img img-2" src="https://i.scdn.co/image/ab6775700000ee85ba46066631806d8bf362f109" alt="img">
-                        <img class="top-left-img img-3" src="https://i.scdn.co/image/ab6775700000ee8540e21a8a6eb76e5fa526a9a9" alt="img">
-                        <img class="top-left-img img-4" src="https://i.scdn.co/image/ab6775700000ee856aeb0cf4d3371882dd4fdaf0" alt="img">
-                        <img class="top-left-img img-5" src="https://avatars.githubusercontent.com/u/1" alt="img">
-                        <img class="top-left-img img-6" src="https://avatars.githubusercontent.com/u/2" alt="img">
-                        <img class="top-left-img img-7" src="https://avatars.githubusercontent.com/u/3" alt="img">
-                        <img class="top-left-img img-8" src="https://avatars.githubusercontent.com/u/4" alt="img">
+                        <img class="top-left-img img-1" src="" alt="img">
+                        <img class="top-left-img img-2" src="" alt="img">
+                        <img class="top-left-img img-3" src="" alt="img">
+                        <img class="top-left-img img-4" src="" alt="img">
+                        <img class="top-left-img img-5" src="" alt="img">
+                        <img class="top-left-img img-6" src="" alt="img">
+                        <img class="top-left-img img-7" src="" alt="img">
+                        <img class="top-left-img img-8" src="" alt="img">
                     </div>
 
                 </div>
@@ -100,11 +100,11 @@ module.exports = (data) => {
                             <div id="right-column-user-info-content" class="last-stream admin">
                                 <div class="right-column-user-info-title no-margin-top">Utente</div>
                                 <div class="row">
-                                    <img id="right-column-user-info-img" src="https://i.scdn.co/image/ab6775700000ee856aeb0cf4d3371882dd4fdaf0" alt="tom's img"/>
+                                    <img id="right-column-user-info-img" src="" alt=""/>
                                     <span id="right-column-user-info-display_name-id" class="column">
-                                        <div id="right-column-user-info-display_name" class="last-stream-track-title">tom</div>
-                                        <div id="right-column-user-info-id" class="last-stream-track-artist">tommasomoro05</div>
-                                        <div id="right-column-user-email" class="last-stream-track-artist">moroxtommaso@gmail.com</div>
+                                        <div id="right-column-user-info-display_name" class="last-stream-track-title"></div>
+                                        <div id="right-column-user-info-id" class="last-stream-track-artist"></div>
+                                        <div id="right-column-user-email" class="last-stream-track-artist"></div>
                                         <a id="href-activity">Visualizza la sua attività</a>
                                     </span>
                                 </div>
@@ -139,33 +139,8 @@ module.exports = (data) => {
                             </div>
 
                             <div id="last-stream" class="last-stream admin">
-                                <div class="last-stream-track">
-                                    <div class="last-stream-track-left">
-                                        <div class="last-stream-track-img admin error-num error-code-500">500</div>
-                                        <div class="last-stream-track-txt">
-                                            <div class="last-stream-track-title">Internal error</div>
-                                            <div class="last-stream-track-artist">/login</div>
-                                        </div>
-                                    </div>
-                                    <span class="last-stream-track-right-admin-span row">
-                                        <div class="last-stream-track-right">10 min ago</div>
-                                        <div class="last-stream-track-right admin"></div>
-                                    </span>
-                                </div>
-
-                                <div class="last-stream-track">
-                                    <div class="last-stream-track-left">
-                                        <div class="last-stream-track-img admin error-num error-code-400">400</div>
-                                        <div class="last-stream-track-txt">
-                                            <div class="last-stream-track-title">Internal error</div>
-                                            <div class="last-stream-track-artist">tommasomoro05</div>
-                                        </div>
-                                    </div>
-                                    <span class="last-stream-track-right-admin-span row">
-                                        <div class="last-stream-track-right">10 min ago</div>
-                                        <div class="last-stream-track-right admin"></div>
-                                    </span>
-                                </div>
+                            
+                                <a class="seemore" onclick="window.open('https://console.firebase.google.com/u/0/project/spotify-stats-tommaso-moro/firestore/data/~2Flog')">Show more</a>
                             </div>
                         </span>
                     </span>
@@ -188,6 +163,7 @@ module.exports = (data) => {
         </main>
         
         <div id="hidden-init-data" class="column" style="color:white;">${JSON.stringify(data)}</div>
+        <div id="hidden-access-token" class="column" style="color:white;">${JSON.stringify(access_token)}</div>
         
         <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
         <script src="app-admin.js"></script>

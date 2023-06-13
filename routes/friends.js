@@ -25,7 +25,7 @@ router.post("/invite/:user", async (req, res) => {
     try {
         friend = await db.collection('users').doc(friendId).get()
     } catch (error) {
-        console.log(error)
+        logError(500, "error retrieving user", req.path, userInfo.id, error)
         return res.status(500).send("error retrieving user")
     }
 
@@ -40,7 +40,7 @@ router.post("/invite/:user", async (req, res) => {
         check2 = await db.collection('users').doc(userInfo.id).collection('friend-invited-by').doc(friendId).get()
         check3 = await db.collection('users').doc(userInfo.id).collection('friends').doc(friendId).get()
     } catch (error) {
-        console.log(error)
+        logError(500, "error check1", req.path, userInfo.id, error)
         return res.status(500).send("error checking user")
     }
 
@@ -56,17 +56,18 @@ router.post("/invite/:user", async (req, res) => {
         await db.collection('users').doc(friendId).collection('friend-invited-by').doc(userInfo.id).set({})
         await db.collection('users').doc(userInfo.id).collection('friend-invited').doc(friendId).set({})
     } catch (error) {
-        console.log(error)
-        return res.status(500).send("database error")
+        logError(500, "friend-invited-by friend-invited error", req.path, userInfo.id, error)
     }
 
     const notification = await addNotifications(friendId, `${userInfo.display_name} ti ha invitato ad essere suo amico!`)
-    if (notification.error)
+    if (notification.error) {
+        logError(500, "fnotifications error", req.path, userInfo.id, error)
         return res.status(500).send("notifications.error")
+    }
 
     res.send("done")
 })
-
+//FINISCI DA QUI E PAGINA NOTIFICATION.JS
 
 router.post("/remove/:user", async (req, res) => {
     if (!req.params.user)
@@ -89,7 +90,7 @@ router.post("/remove/:user", async (req, res) => {
     try {
         friend = await db.collection('users').doc(friendId).get()
     } catch (error) {
-        console.log(error)
+        logError(500, "retrieving user error", req.path, userInfo.id, error)
         return res.status(500).send("error retrieving user")
     }
 
@@ -100,7 +101,7 @@ router.post("/remove/:user", async (req, res) => {
     try {
         check = await db.collection('users').doc(userInfo.id).collection('friends').doc(friendId).get()
     } catch (error) {
-        console.log(error)
+        logError(500, "checking user error", req.path, userInfo.id, error)
         return res.status(500).send("error checking user")
     }
 
@@ -111,13 +112,15 @@ router.post("/remove/:user", async (req, res) => {
         await db.collection('users').doc(userInfo.id).collection('friends').doc(friendId).delete()
         await db.collection('users').doc(friendId).collection('friends').doc(userInfo.id).delete()
     } catch (error) {
-        console.log(error)
+        logError(500, "database error", req.path, userInfo.id, error)
         return res.status(500).send("database error")
     }
 
     const notification = await addNotifications(friendId, `${userInfo.display_name} ti ha rimosso dai suoi amici`)
-    if (notification.error)
+    if (notification.error) {
+        logError(500, "notifications error", req.path, userInfo.id, error)
         return res.status(500).send("notifications.error")
+    }
 
     res.send("done")
 })
@@ -144,7 +147,7 @@ router.post("/invite-cancel/:user", async (req, res) => {
     try {
         friend = await db.collection('users').doc(friendId).get()
     } catch (error) {
-        console.log(error)
+        logError(500, "retrieving user error", req.path, userInfo.id, error)
         return res.status(500).send("error retrieving user")
     }
 
@@ -159,7 +162,7 @@ router.post("/invite-cancel/:user", async (req, res) => {
         check2 = await db.collection('users').doc(userInfo.id).collection('friend-invited-by').doc(friendId).get()
         check3 = await db.collection('users').doc(userInfo.id).collection('friends').doc(friendId).get()
     } catch (error) {
-        console.log(error)
+        logError(500, "checking user error", req.path, userInfo.id, error)
         return res.status(500).send("error checking user")
     }
 
@@ -172,13 +175,15 @@ router.post("/invite-cancel/:user", async (req, res) => {
         await db.collection('users').doc(userInfo.id).collection('friend-invited').doc(friendId).delete()
         await db.collection('users').doc(friendId).collection('friend-invited-by').doc(userInfo.id).delete()
     } catch (error) {
-        console.log(error)
+        logError(500, "database error", req.path, userInfo.id, error)
         return res.status(500).send("database error")
     }
 
     const notification = await addNotifications(friendId, `${userInfo.display_name} ha cancellato la sua richiesta di amicizia`)
-    if (notification.error)
+    if (notification.error) {
+        logError(500, "notifications error", req.path, userInfo.id, error)
         return res.status(500).send("notifications.error")
+    }
 
     res.send("done")
 })
@@ -205,7 +210,7 @@ router.post("/invite-accept/:user", async (req, res) => {
     try {
         friend = await db.collection('users').doc(friendId).get()
     } catch (error) {
-        console.log(error)
+        logError(500, "retrieving user error", req.path, userInfo.id, error)
         return res.status(500).send("error retrieving user")
     }
 
@@ -217,7 +222,7 @@ router.post("/invite-accept/:user", async (req, res) => {
     try {
         isInvitedCheck = await db.collection('users').doc(userInfo.id).collection('friend-invited-by').doc(friendId).get()
     } catch (error) {
-        console.log(error)
+        logError(500, "checking user error", req.path, userInfo.id, error)
         return res.status(500).send("error checking user")
     }
 
@@ -232,13 +237,15 @@ router.post("/invite-accept/:user", async (req, res) => {
         await db.collection('users').doc(userInfo.id).collection('friend-invited-by').doc(friendId).delete()
         await db.collection('users').doc(friendId).collection('friend-invited').doc(userInfo.id).delete()
     } catch (error) {
-        console.log(error)
+        logError(500, "database error", req.path, userInfo.id, error)
         return res.status(500).send("database error")
     }
 
     const notification = await addNotifications(friendId, `${userInfo.display_name} ha accettato la tua richiesta di amicizia!`)
-    if (notification.error)
+    if (notification.error) {
+        logError(500, "notifications error", req.path, userInfo.id, error)
         return res.status(500).send("notifications.error")
+    }
 
     res.send("done")
 })
@@ -265,7 +272,7 @@ router.post("/invite-decline/:user", async (req, res) => {
     try {
         friend = await db.collection('users').doc(friendId).get()
     } catch (error) {
-        console.log(error)
+        logError(500, "retrieving user error", req.path, userInfo.id, error)
         return res.status(500).send("error retrieving user")
     }
 
@@ -277,7 +284,7 @@ router.post("/invite-decline/:user", async (req, res) => {
     try {
         isInvitedCheck = await db.collection('users').doc(userInfo.id).collection('friend-invited-by').doc(friendId).get()
     } catch (error) {
-        console.log(error)
+        logError(500, "checking user error", req.path, userInfo.id, error)
         return res.status(500).send("error checking user")
     }
 
@@ -289,13 +296,15 @@ router.post("/invite-decline/:user", async (req, res) => {
         await db.collection('users').doc(userInfo.id).collection('friend-invited-by').doc(friendId).delete()
         await db.collection('users').doc(friendId).collection('friend-invited').doc(userInfo.id).delete()
     } catch (error) {
-        console.log(error)
+        logError(500, "database error", req.path, userInfo.id, error)
         return res.status(500).send("database error")
     }
 
     const notification = await addNotifications(friendId, `${userInfo.display_name} ha rifiutato la tua richiesta di amicizia`)
-    if (notification.error)
+    if (notification.error) {
+        logError(500, "notifications error", req.path, userInfo.id, error)
         return res.status(500).send("notifications.error")
+    }
 
     res.send("done")
 })

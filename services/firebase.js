@@ -9,6 +9,29 @@ initializeApp({
 
 const db = getFirestore()
 
+async function logError(status, errorName, url, userId, errorObj) {
+
+    const err = {
+        time: Math.trunc(new Date().getTime()/1000),
+        status,
+        url,
+        errorName,
+        hide: false
+    }
+
+    if (userId)
+        err.user_reference = userId
+
+    if (errorObj)
+        err.errorObj = JSON.stringify(errorObj)
+
+    try {
+        await db.collection('log').add(err)
+    } catch (error) {
+        console.log("error logging error XO", error)
+    }
+}
+
 async function addNotifications(userId, text = "", action) {
     let notifications = {
         addedAt: Math.trunc(new Date().getTime()/1000),
@@ -55,21 +78,6 @@ async function retrieveNotifications(userId) {
     })
 
     return notifications
-}
-
-async function logError(status, error, url, userId) {
-
-    try {
-        await db.collection('log').add({
-            time: Math.trunc(new Date().getTime()/1000),
-            status,
-            user_reference: userId,
-            url,
-            error
-        })
-    } catch (error) {
-        console.log("error logging error XO", error)
-    }
 }
 
 

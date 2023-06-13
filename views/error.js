@@ -1,4 +1,6 @@
-module.exports = (text, second_text, error_code) => {
+module.exports = (text, second_text, error_code, req) => {
+    let preLink = (req) ? req.protocol + '://' + req.get('host') + "/" : ""
+
     return /*html*/`
     <!DOCTYPE html>
     <html lang="it">
@@ -6,17 +8,17 @@ module.exports = (text, second_text, error_code) => {
         <meta charset="UTF-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <link rel="stylesheet" type="text/css" href="base.css">
-        <link rel="stylesheet" type="text/css" href="style.css">
-        <link rel="icon" type="image/x-icon" href="spotify-logo.png">
+        <link rel="stylesheet" type="text/css" href="${preLink}base.css">
+        <link rel="stylesheet" type="text/css" href="${preLink}style.css">
+        <link rel="icon" type="image/x-icon" href="${preLink}spotify-logo.png">
         <title>Spotify Stats - ${error_code}</title>
     </head>
     <body>
         <main>
             <div id="top" class="error">
                 <div id="top-bar">
-                    <span id="top-bar-logo-text" class="pointer" onclick="window.location.href = '/'">
-                        <img class="top-bar-img" id="top-bar-logo" src="spotify-logo.png" alt="logo">
+                    <span id="top-bar-logo-text" class="pointer" onclick="window.location.href = '${preLink}/'">
+                        <img class="top-bar-img" id="top-bar-logo" src="${preLink}spotify-logo.png" alt="logo">
                         <div id="top-bar-text">Spotify Stats</div>
                     </span>
                 </div>

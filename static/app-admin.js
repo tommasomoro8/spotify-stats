@@ -1,5 +1,266 @@
 let data = JSON.parse(document.getElementById("hidden-init-data").innerText); document.getElementById("hidden-init-data").remove()
+const access_token = JSON.parse(document.getElementById("hidden-access-token").innerText); document.getElementById("hidden-access-token").remove()
 console.log(data)
+
+const dividers = [1, 1000, 60, 60, 24, 30, 12]
+const dividersName = ["now", "seconds", "minutes", "hours", "days", "months", "years"]
+const dividersNameIta = ["Ora", ["secondi fa", "secondo fa"], ["minuti fa", "minuto fa"], ["ore fa", "ora fa"], ["giorni fa", "giorno fa"], ["mesi fa", "mese fa"], ["anni fa", "anno fa"]]
+const monthIta = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
+
+function seeTimeDifference(time, returnMs = false) {
+    const now = new Date().getTime()
+    const song = new Date(time).getTime()
+
+    let value = now - song
+
+    if (returnMs)
+        return value
+
+    for (let i = 0; i < dividers.length; i++) {
+        if (value/dividers[i] < 1) {
+            return {
+                value,
+                measureOfTime: dividersName[i-1],
+                measureOfTimeNum: i-1,
+                nowDate: now,
+                songDate: song,
+            }
+        }
+        value = value/dividers[i]
+    }
+
+    return {
+        value,
+        measureOfTime: dividersName[dividers.length-1],
+        measureOfTimeNum: dividers.length-1,
+        nowDate: now,
+        songDate: song,
+    }
+}
+
+function capitalizeFirstLetter(string) {
+    return string.charAt(0).toUpperCase() + string.slice(1);
+}
+
+// min (inclusive) - max (exclusive)
+function getRandomInt(min, max) {
+    min = Math.ceil(min);
+    max = Math.floor(max);
+    return Math.floor(Math.random() * (max - min) + min); // The maximum is exclusive and the minimum is inclusive
+}
+
+
+async function getArtistRandomImg() {
+    let myHeaders = new Headers();
+    myHeaders.append("Content-Type", "application/json");
+    myHeaders.append("Authorization", `Bearer  ${access_token}`);
+    
+    let result = await fetch(`https://api.spotify.com/v1/me/top/artists?limit=50&time_range=short_term`, {
+        method: 'GET',
+        headers: myHeaders,
+        redirect: "follow"
+    })
+    
+    if (result.status !== 200) return
+
+    result = await result.json()
+    
+    let img = []
+    let indexes = []
+    let loopNum = 0
+
+    for (let i = 0; i < 8; i++) {
+        if (loopNum > result.total)
+            return undefined
+        loopNum ++
+
+        let whileNum = 0
+        let randomIndex
+        do {
+            if (whileNum > result.total)
+                return undefined
+            whileNum++
+            randomIndex = getRandomInt(0, result.total)  
+        } while (indexes.includes(randomIndex))
+        indexes.push(randomIndex)
+        
+        try {
+            img.push(result.items[randomIndex].images[0].url)
+        } catch (error) {
+            i--
+            continue
+        }
+    }
+
+    return img
+}
+
+(async () => {
+    let imgCollection = document.getElementsByClassName("top-left-img")
+    let imgList = await getArtistRandomImg()
+    for (let i = 0; i < imgList.length; i++) {
+        imgCollection[i].src = imgList[i]
+    }
+
+    for (let i = 0; i < imgList.length; i++) {
+        setTimeout(() => {
+            imgCollection[i].classList.add("show")
+        }, getRandomInt(50, 120)*i);
+    }
+})()
+
+
+
+
+function addErrorLog(error) {
+    console.log(error)
+    const div = document.createElement("div")
+    div.classList.add("last-stream-track", "right", error.id)
+
+        const spanoutside = document.createElement("div")
+        spanoutside.classList.add("spanoutsiderow")
+
+            const divLeft = document.createElement("div")
+            divLeft.classList.add("last-stream-track-left")
+
+                const divLeftdiv1 = document.createElement("span")
+                divLeftdiv1.classList.add("last-stream-track-img", "admin", "error-num", (error.status >= 500) ? "error-code-500" : "error-code-400")
+                divLeftdiv1.innerText = error.status
+                divLeft.append(divLeftdiv1)
+
+                const divLeftdiv2 = document.createElement("span")
+                divLeftdiv2.classList.add("last-stream-track-txt")
+
+                    const divLeftdiv2div1 = document.createElement("span")
+                    divLeftdiv2div1.classList.add("last-stream-track-title")
+                    divLeftdiv2div1.innerText = capitalizeFirstLetter(error.errorName)
+                    divLeftdiv2.append(divLeftdiv2div1)
+
+                    const divLeftdiv2div2 = document.createElement("span")
+                    divLeftdiv2div2.classList.add("last-stream-track-artist")
+                    divLeftdiv2div2.innerText = error.url
+                    divLeftdiv2.append(divLeftdiv2div2)
+
+                divLeft.append(divLeftdiv2)
+
+            spanoutside.append(divLeft)
+
+
+            const spanRight = document.createElement("span")
+            spanRight.classList.add("last-stream-track-right-admin-span", "row")
+
+                const spanRightdiv1 = document.createElement("div")
+                spanRightdiv1.classList.add("last-stream-track-right")
+                spanRight.append(spanRightdiv1)
+
+                function modifyTime() {
+                    const time = seeTimeDifference(error.time * 1000)
+                    if (time.measureOfTimeNum === 0 || time.measureOfTimeNum === 1)
+                        spanRightdiv1.innerText = dividersNameIta[0]
+                    else {
+                        spanRightdiv1.innerText = `${Math.trunc(time.value)} ${dividersNameIta[time.measureOfTimeNum][+(Math.trunc(time.value) === 1)]}`
+                    }
+                }
+
+                modifyTime()
+                setInterval(modifyTime, 60000)
+
+                const spanRightdiv2 = document.createElement("div")
+                spanRightdiv2.classList.add("last-stream-track-right", "admin")
+                spanRight.append(spanRightdiv2)
+
+            spanoutside.append(spanRight)
+
+        div.append(spanoutside)
+
+
+        const divunder = document.createElement("div")
+        divunder.classList.add("last-stream-track", "right", "show", "open", "fillbottom", "last-stream-track-content")
+
+            const divunderUserReference = document.createElement("div")
+
+                const divunderUserReferenceSpan1 = document.createElement("span")
+                divunderUserReferenceSpan1.classList.add("column")
+                divunderUserReferenceSpan1.style.fontWeight = 500
+
+                    const divunderUserReferenceSpan1row = document.createElement("span")
+                    divunderUserReferenceSpan1row.classList.add("row")
+
+                        const divunderUserReferenceSpan2 = document.createElement("span")
+                        divunderUserReferenceSpan2.classList.add("txt-grey")
+                        divunderUserReferenceSpan2.innerText = "User Reference: "
+                        if (error.user_reference)
+                            divunderUserReferenceSpan1row.append(divunderUserReferenceSpan2)
+
+                        const divunderUserReferenceSpan3 = document.createElement("span")
+                        divunderUserReferenceSpan3.id = `${error.user_reference}-action`
+                        divunderUserReferenceSpan3.innerText = error.user_reference
+                        if (error.user_reference)
+                            divunderUserReferenceSpan1row.append(divunderUserReferenceSpan3)
+
+                    divunderUserReferenceSpan1.append(divunderUserReferenceSpan1row)
+
+                    const divunderUserReferenceSpan1showmore = document.createElement("div")
+                    divunderUserReferenceSpan1showmore.classList.add("seemore-el")
+                    divunderUserReferenceSpan1showmore.innerText = "Show more"
+                    divunderUserReferenceSpan1showmore.addEventListener("click", () => {
+                        window.open(`https://console.firebase.google.com/u/0/project/spotify-stats-tommaso-moro/firestore/data/~2Flog~2F${error.id}`)
+                    })
+                    divunderUserReferenceSpan1.append(divunderUserReferenceSpan1showmore)
+
+                divunderUserReference.append(divunderUserReferenceSpan1)
+
+            divunder.append(divunderUserReference)
+
+            const divunderActions = document.createElement("div")
+            divunderActions.classList.add("divunderActions")
+
+                const divunderActionsHide = document.createElement("div")
+                divunderActionsHide.classList.add("divunderActionsHide")
+                divunderActionsHide.addEventListener("click", () => {
+                    console.warn("hide", error.id, "SEND REQUEST")
+                    div.classList.remove("open", "show")
+                    setTimeout(() => div.remove(), 1500)
+                })
+
+                    const divunderActionsHideImg = document.createElement("div")
+                    divunderActionsHideImg.classList.add("divunderActionsHide")
+                    divunderActionsHide.append(divunderActionsHideImg)
+
+                divunderActions.append(divunderActionsHide)
+
+
+                const divunderActionsDelete = document.createElement("div")
+                divunderActionsDelete.classList.add("divunderActionsDelete")
+                divunderActionsDelete.addEventListener("click", () => {
+                    console.warn("delete", error.id, "SEND REQUEST")
+                    div.classList.remove("open", "show")
+                    setTimeout(() => div.remove(), 1500)
+                })
+                divunderActions.append(divunderActionsDelete)
+
+            divunder.append(divunderActions)
+
+        div.append(divunder)
+
+    document.getElementById("last-stream").prepend(div)
+
+
+    spanoutside.addEventListener("click", () => {
+        if(!div.classList.contains("open")) {
+            div.classList.add("open")
+            spanRightdiv2.classList.add("rotate-90")
+        } else {
+            div.classList.remove("open")
+            spanRightdiv2.classList.remove("rotate-90")
+        }
+    })
+
+    return div
+}
+
+
+
 
 
 let showUserInfoOpen = false
@@ -8,10 +269,6 @@ let showUserInfoOpenId
 function showClient(client) {
     const div = document.createElement("div")
     div.classList.add("right-column-user-client", client.id)
-    
-        // const div_img = document.createElement("div")
-        // div_img.classList.add("right-column-user-clients-img")
-        // div.append(div_img)
 
         const div_txt = document.createElement("div")
         div_txt.classList.add("right-column-user-clients-text", "no-left-padding-no-left-margin")
@@ -23,7 +280,14 @@ function showClient(client) {
             
             const div_txt_2 = document.createElement("div")
             div_txt_2.classList.add("right-column-user-clients-text-subtitle")
-            div_txt_2.innerText = client.client["sec-ch-ua"] + " on " + client.client["sec-ch-ua-platform"]
+            div_txt_2.innerText = ""
+            if (client.client["sec-ch-ua"])
+                div_txt_2.innerText += client.client["sec-ch-ua"]
+            if (client.client["user-agent"])
+                div_txt_2.innerText += client.client["user-agent"]
+            if (client.client["sec-ch-ua-platform"])
+                div_txt_2.innerText += " on " + client.client["sec-ch-ua-platform"]
+            
             div_txt.append(div_txt_2)
 
         div.append(div_txt)
@@ -72,15 +336,27 @@ function modifiedClientUserToData(userObj, clientObj, action) {
 }
 
 document.getElementById("userConnectedLen-live").innerText = data.userConnectedLen
+document.getElementById("userConnectedLen-live-persone-a").innerText = (data.userConnectedLen !== 1) ? "persone" : "persona"
 document.getElementById("totalConnectionsLen-live").innerText = data.totalConnectionsLen
+document.getElementById("userConnectedLen-live-connessi-o").innerText = (data.totalConnectionsLen !== 1) ? "connessi" : "connesso"
 document.getElementById("usersCount-live").innerText = data.usersCount
+document.getElementById("userConnectedLen-live-registrati-o").innerText = (data.usersCount !== 1) ? "registrati" : "registrato"
 
 const noImgSrc = "https://upload.wikimedia.org/wikipedia/commons/8/89/Portrait_Placeholder.png"
 
 let socket = io("/admin")
 
 socket.on("log", log => {
-    console.log(log)
+    log.reverse()
+    for (let i = 0; i < log.length; i++) {
+        if (!document.getElementsByClassName(log[i].id)[0]) {
+            let div = addErrorLog(log[i])
+
+            setTimeout(() => {
+                div.classList.add("show")
+            }, i*50 + 50)
+        }
+    }
 })
 
 socket.on("connectionAlives", connectionAlives => {
@@ -124,6 +400,10 @@ socket.on("connectionAlives", connectionAlives => {
         default:
             break;
     }
+
+
+    document.getElementById("userConnectedLen-live-persone-a").innerText = (parseInt(document.getElementById("userConnectedLen-live").innerText) !== 1) ? "persone" : "persona"
+    document.getElementById("userConnectedLen-live-connessi-o").innerText = (parseInt(document.getElementById("totalConnectionsLen-live").innerText) !== 1) ? "connessi" : "connesso"
 })
 
 console.log(data.userConnected.length)
@@ -133,11 +413,8 @@ for (let i = 0; i < data.userConnected.length; i++) {
 
 socket.on("usersCount", count => {
     document.getElementById("usersCount-live").innerText = count
+    document.getElementById("userConnectedLen-live-registrati-o").innerText = (count !== 1) ? "registrati" : "registrato"
 })
-
-// socket.on("lastUsersOffline", lastUsersOffline => {
-//     console.log("lastUsersOffline", lastUsersOffline)
-// })
 
 function retrieveUserDiv(userId, online = true) {
     return document.getElementsByClassName(userId + "-" + online)[0]

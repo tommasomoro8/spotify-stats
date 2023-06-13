@@ -22,7 +22,7 @@ router.post("/delete/:notificationId", async (req, res) => {
     try {
         notification = await db.collection('users').doc(userInfo.id).collection('notifications').doc(notificationId).get();
     } catch (error) {
-        console.log(error)
+        logError(500, "database error", req.path, userInfo.id, error)
         return res.status(500).send("db error")
     }
 
@@ -32,7 +32,7 @@ router.post("/delete/:notificationId", async (req, res) => {
     try {
         await db.collection('users').doc(userInfo.id).collection('notifications').doc(notificationId).delete()
     } catch (error) {
-        console.log(error)
+        logError(500, "database error", req.path, userInfo.id, error)
         return res.status(500).send("db error")
     }
 
@@ -50,14 +50,16 @@ router.post("/delete-all", async (req, res) => {
 
     let notifications = await retrieveNotifications(userInfo.id)
 
-    if (notifications.error)
+    if (notifications.error) {
+        logError(500, "notifications database error", req.path, userInfo.id, error)
         return res.status(500).send(notifications.error)
+    }
 
     notifications.forEach(async notification => {
         try {
             await db.collection('users').doc(userInfo.id).collection('notifications').doc(notification.id).delete()
         } catch (error) {
-            console.log(error)
+            logError(500, "notifications forEach database error", req.path, userInfo.id, error)
         }
     })
     
@@ -66,8 +68,7 @@ router.post("/delete-all", async (req, res) => {
 
 module.exports = router
 
-/*
-let notifications = await addNotifications(userInfo.id, "testo della notifica")
-if (notifications.error)
-    return res.status(500).send(notifications.error)
-*/
+
+// let notifications = await addNotifications(userInfo.id, "testo della notifica")
+// if (notifications.error)
+//     return res.status(500).send(notifications.error)
