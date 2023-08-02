@@ -42,6 +42,7 @@ async function getUserInfo(access_token, refresh_token) {
         dbUserInfo.refresh_token = refresh_token
 
     try {
+        userInfo.images.sort((a,b) => b.width - a.width)
         dbUserInfo.imageUrl = userInfo.images[0].url
     } catch (error) {
         dbUserInfo.imageUrl = FieldValue.delete()
