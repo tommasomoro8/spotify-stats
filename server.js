@@ -95,7 +95,8 @@ app.get("/", async (req, res) => {
         res.clearCookie("access_token")
         return res.redirect("/refresh_token")
     }
-    try {
+    try {  
+        userInfo.images.sort((a,b) => b.width - a.width)
         userInfo.imageUrl = userInfo.images[0].url
     } catch (e) {}
 
@@ -798,6 +799,7 @@ app.get('/:friendId', async (req, res) => {
         return res.redirect(`/refresh_token?then=${friendId}`)
     }
     try {
+        userInfo.images.sort((a,b) => b.width - a.width)
         userInfo.imageUrl = userInfo.images[0].url
     } catch (e) {}
 
