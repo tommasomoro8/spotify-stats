@@ -9,7 +9,7 @@ async function getUserInfo(access_token, refresh_token) {
             method: 'get',
             url: 'https://api.spotify.com/v1/me',
             headers: {
-              Authorization: 'Bearer  ' + access_token
+              Authorization: 'Bearer ' + access_token
             },
             json: true
         })

@@ -19,7 +19,7 @@ if access_token_request.status_code != 200:
     print(f"Server responded with: '{access_token_request.text}'. Il refresh_token potrebbe non essere più valido. Genera un altro script su: 'http://localhost:3000/python-script-download'")
     exit()
 
-access_token = 'Bearer  ' + access_token_request.text
+access_token = 'Bearer ' + access_token_request.text
 
 time_range = 0 #4 weeks, 6 months, all
 time_range_txt = ["short_term", "medium_term", "long_term"]
