@@ -1,3 +1,4 @@
+const path = require("path")
 const querystring = require("querystring")
 const request = require("request-promise-native")
 const cookieParser = require("cookie-parser")
@@ -13,7 +14,7 @@ const server = http.createServer(app)
 const { Server } = require("socket.io")
 const io = new Server(server)
 
-require('dotenv').config()
+require('dotenv').config({ path: path.join(__dirname, '..', '.env') })
 const dev = process.env.NODE_ENV === 'development'
 
 const { db, logError } = require("./services/firebase")
@@ -72,7 +73,7 @@ app.use(secureHttps(dev))
 app.use(cookieParser())
 app.use(removeLastSlash)
 
-app.use("/", express.static('./static'))
+app.use("/", express.static(path.join(__dirname, 'static')))
 
 app.use("/friends", friends)
 app.use("/notifications", notifications)

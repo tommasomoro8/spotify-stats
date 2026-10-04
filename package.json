@@ -2,16 +2,16 @@
   "name": "spotify-stats",
   "version": "1.0.0",
   "description": "",
-  "main": "server.js",
+  "main": "src/server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server.js"
+    "start": "node src/server.js"
   },
   "engines": {
     "node": "14.x"
   },
   "author": "Tommaso Moro",
-  "license": "ISC",
+  "license": "MIT",
   "dependencies": {
     "cookie": "^0.5.0",
     "cookie-parser": "^1.4.6",
