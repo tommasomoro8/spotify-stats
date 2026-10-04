@@ -1,6 +1,6 @@
 # Spotify Stats
 
-A web app where my friends and I log in with Spotify to see our top genres, tracks and artists, and each other's stats.
+A web app where my friends and I log in with Spotify to see our top genres, tracks and artists.
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 ![Language](https://img.shields.io/badge/language-JavaScript-f7df1e)
