@@ -311,7 +311,7 @@ async function spotifyTop_artists_tracks_genres_recentlyPlayed(timeRange = 0) {
 
     let myHeaders = new Headers();
     myHeaders.append("Content-Type", "application/json");
-    myHeaders.append("Authorization", `Bearer  ${access_token}`);
+    myHeaders.append("Authorization", `Bearer ${access_token}`);
 
     const postURL = [
         `https://api.spotify.com/v1/me/top/tracks?limit=50&time_range=${timeRanges[timeRange]}`,
@@ -439,7 +439,7 @@ async function displayResult(timeRange = 0) {
     }
 
     //track-scrolls
-    for (let i = 0; i < tracks.total; i++) {
+    for (let i = 0; i < tracks.items.length; i++) {
         const div = document.createElement("div")
         div.classList.add("track")
         if (i === 0)
@@ -573,7 +573,7 @@ async function displayResult(timeRange = 0) {
     }
 
     //artist-scrolls
-    for (let i = 0; i < artists.total; i++) {
+    for (let i = 0; i < artists.items.length; i++) {
         const div = document.createElement("div")
         div.classList.add("artist")
         if (i === 0)

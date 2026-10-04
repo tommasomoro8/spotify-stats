@@ -53,7 +53,7 @@ function getRandomInt(min, max) {
 async function getArtistRandomImg() {
     let myHeaders = new Headers();
     myHeaders.append("Content-Type", "application/json");
-    myHeaders.append("Authorization", `Bearer  ${access_token}`);
+    myHeaders.append("Authorization", `Bearer ${access_token}`);
     
     let result = await fetch(`https://api.spotify.com/v1/me/top/artists?limit=50&time_range=short_term`, {
         method: 'GET',
