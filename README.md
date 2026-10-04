@@ -27,7 +27,7 @@ A Node.js web app: you log in with Spotify and see your top genres, tracks and a
 - How to build an admin console with a live log of server errors.
 
 ## Stack
-Node.js, Express, Socket.IO, Cloud Firestore, Spotify Web API, JavaScript, HTML, CSS, Python
+Node.js, Express, Socket.IO, Cloud Firestore, Spotify Web API, JavaScript, HTML, CSS
 -->
 
 <!-- portfolio:start -->
@@ -52,8 +52,6 @@ A selector switches the first three sections between the last 4 weeks, the last 
 
 Clicking your profile picture opens a side bar with your friends (and when they were last online), the invites you received (accept or decline) and the invites you sent (cancel). You add a friend by typing their Spotify ID. Every invite, answer or removal sends a notification to the other person, shown as a counter on the profile picture. Clicking a friend opens the same page with their stats.
 
-At the bottom of the page you can download a Python script. It draws a bar chart of your 10 top genres of the last 4 weeks with `turtle`.
-
 My account also has an admin console at `/admin`. It shows live how many people and devices are connected, how many accounts are registered, who went offline last, and the last 30 server errors. I can hide or delete an error, and open the stats of any user.
 
 ![Admin console with one person online, eleven registered accounts, the list of online accounts and the error log](docs/screenshots/admin-console.webp)
@@ -77,55 +75,27 @@ My account also has an admin console at `/admin`. It shows live how many people 
 - Spotify Web API
 - `helmet`, `express-rate-limit`, `cookie-parser`, `dotenv`, `request-promise-native`
 - HTML, CSS and JavaScript in the browser, without frameworks
-- Python with `turtle` for the downloadable script
 <!-- portfolio:end -->
 
 ## Architecture
 ```mermaid
-flowchart LR
+flowchart TB
     subgraph Browser
-        Landing["Landing page<br>views/landing.js"]
-        Home["Home and friend page<br>views/home.js + static/app.js"]
-        Admin["Admin console<br>views/admin.js + static/app-admin.js"]
+        Home["Home and friend pages"]
+        Admin["Admin console"]
     end
-    Script["spotifystats.py<br>Python + turtle"]
-
-    subgraph Server["Node.js server (src/)"]
-        Express["server.js<br>pages, OAuth, admin routes"]
-        Routes["routes/friends.js<br>routes/notifications.js"]
-        Sockets["Socket.IO<br>namespaces / and /admin"]
-        Services["services/spotify.js<br>services/firebase.js"]
-    end
-
-    Accounts["Spotify Accounts<br>/authorize, /api/token"]
-    API["Spotify Web API"]
+    Server["Node.js server<br>Express + Socket.IO"]
+    Spotify["Spotify<br>Accounts + Web API"]
     DB[("Cloud Firestore")]
 
-    Express -->|"HTML"| Landing
-    Landing -->|"/login"| Express
-    Express -->|"redirect to /authorize"| Accounts
-    Accounts -->|"redirect to /callback with code"| Express
-    Express -->|"code or refresh token, gets tokens"| Accounts
-    Express -->|"HTML with access token"| Home
-    Express -->|"HTML"| Admin
-    Express -->|"users, friends, error log"| DB
-    Express -->|"getUserInfo, logError"| Services
-    Routes -->|"getUserInfo, addNotifications"| Services
-    Sockets -->|"getUserInfo"| Services
-    Services -->|"GET /v1/me"| API
-    Services -->|"profiles, refresh tokens, notifications, errors"| DB
-    Routes -->|"invites, friends, notifications"| DB
-    Home -->|"top tracks, top artists, recently played"| API
-    Home -->|"POST /friends/*, /notifications/*"| Routes
-    Admin -->|"top artists for the header pictures"| API
-    Admin -->|"POST /admin/hide-error, /admin/delete-error"| Express
-    DB -->|"onSnapshot"| Sockets
-    Sockets -->|"notifications, friends, invites"| Home
-    Sockets -->|"error log, user count, who is online"| Admin
-    Express -->|"/python-script-download"| Script
-    Script -->|"/refresh_token?result=string"| Express
-    Script -->|"top artists"| API
+    Home <-->|"pages, friend actions,<br>live notifications"| Server
+    Admin <-->|"live users and errors,<br>hide or delete errors"| Server
+    Home -->|"top tracks, artists,<br>recent streams"| Spotify
+    Server -->|"login, tokens, profile"| Spotify
+    Server <-->|"read, write,<br>live changes"| DB
 ```
+
+The browser asks Spotify for the stats directly. The server handles login and tokens, keeps users, friends and errors in Firestore, and pushes every change to the open pages through Socket.IO.
 
 The important choices:
 
@@ -178,7 +148,6 @@ spotify-stats/
 │   ├── services/          ← Spotify profile, Firestore helpers, random string for OAuth state
 │   ├── middleware/        ← HTTPS redirect and trailing slash removal
 │   ├── views/             ← pages as functions that return HTML (landing, home, admin, error)
-│   ├── downloads/         ← template of the downloadable Python script
 │   └── static/            ← browser JavaScript, CSS and icons
 ├── docs/
 │   ├── demo.html          ← static demo with a snapshot of my data
@@ -194,7 +163,7 @@ spotify-stats/
 Security problems I verified in the code:
 
 - **A friend's token reaches your browser.** On `/<friend-id>` the server puts the friend's access token in the HTML. For one hour, whoever opens the page can call Spotify as that friend with all the app's scopes, including their email and listening history.
-- **`/refresh_token` is open.** `/refresh_token?refresh_token=…&result=string` returns an access token for any refresh token, using the app's client secret. The Python script relies on it and contains the user's refresh token in plain text.
+- **`/refresh_token` is open.** `/refresh_token?refresh_token=…&result=string` returns an access token for any refresh token, using the app's client secret.
 - **The OAuth `state` isn't checked.** `/login` generates it, but `/callback` only checks that it's present and never compares it, so the login has no CSRF protection.
 - **Reflected XSS.** Values are put in the HTML without escaping, and the Content Security Policy allows inline event handlers. I ran the server with Spotify and Firestore replaced by stubs: on `/<img src=x onerror=alert(1)>` the error page returns the tag as it is.
 - **`SameSite` is never set.** The cookie option is written `SameSite` instead of `sameSite`, so Express ignores it. The refresh token cookie also lasts 10 years, not 1 year as the comment says.
@@ -216,9 +185,8 @@ What I would do next:
 - **Split `server.js` by responsibility.** I would write one authentication middleware that checks the cookie, refreshes the token and sets `req.user`. Then pages, admin routes and socket handlers would go in separate files. This would remove the copied token checks and make each part testable on its own.
 - **Keep friends' tokens on the server.** The server would call Spotify for the friend and send the browser only names, pictures and rankings. I would also save the access token with its expiry time and reuse it until it expires, instead of asking for a new one at every visit.
 - **Encrypt refresh tokens in Firestore**, for example with AES-GCM and a key kept in an environment variable. A database leak alone would then not give access to people's Spotify accounts.
-- **Fix the OAuth and cookie problems:** save `state` in a short-lived cookie at `/login` and compare it at `/callback`, write `sameSite`, and set `trust proxy` to the real number of proxies.
+- **Fix the OAuth and cookie problems:** save `state` in a short-lived cookie at `/login` and compare it at `/callback`, let `/refresh_token` use only the refresh token in the caller's cookie, write `sameSite`, and set `trust proxy` to the real number of proxies.
 - **Escape every value in the views** and move the inline `onclick` handlers into the JavaScript files. Then the Content Security Policy could drop `'unsafe-inline'`.
-- **Change the Python script** so it never contains a refresh token, using the PKCE flow that Spotify offers for apps that can't keep a secret.
 - **Put the app in a Docker container** with a fixed Node version (`package.json` asks for Node 14, which is no longer supported) and use the Firestore emulator in `docker compose`, so anyone can run the project without a real Firebase project.
 
 ## Credits and license
