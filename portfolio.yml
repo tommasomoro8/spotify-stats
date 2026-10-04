@@ -1,0 +1,18 @@
+title: "Spotify Stats"
+slug: "spotify-stats"
+category: "pers"
+year: 2023
+period: "Apr 2023 – May 2023"
+status: "completed"
+role: "solo"
+cover: docs/screenshots/cover.webp
+demo: "https://morotommaso.altervista.org/spotify-stats-demo-app/"
+note: "Static demo with a snapshot of my data: the Spotify API is in development mode, so only accounts I authorise can log in"
+press: []
+screenshots:
+  - path: docs/screenshots/cover.webp
+    alt: "Spotify Stats home page with the top genres of all time as pills and the top tracks as album covers"
+  - path: docs/screenshots/top-artists-recent-streams.webp
+    alt: "Top artists of all time as round pictures with their popularity, and the recent streams list grouped by day"
+  - path: docs/screenshots/admin-console.webp
+    alt: "Admin console with one person online, eleven registered accounts, the list of online accounts and the error log"
