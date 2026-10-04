@@ -7,7 +7,7 @@ status: "completed"
 role: "solo"
 cover: docs/screenshots/cover.webp
 demo: "https://morotommaso.altervista.org/spotify-stats-demo-app/"
-note: "Static demo with a snapshot of my data: the Spotify API is in development mode, so only accounts I authorise can log in"
+note: "Static demo with a snapshot of my Spotify data from October 2026: opening the app to everyone needs Spotify's approval, whose strict requirements went beyond the scope of this project, so the real app stays in development mode"
 press: []
 screenshots:
   - path: docs/screenshots/cover.webp

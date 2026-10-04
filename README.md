@@ -7,23 +7,25 @@ A web app where my friends and I log in with Spotify to see our top genres, trac
 
 ![Spotify Stats home page with the top genres of all time as pills and the top tracks as album covers](docs/screenshots/cover.webp)
 
-**Live demo:** https://morotommaso.altervista.org/spotify-stats-demo-app/ (a static copy of the home page with a snapshot of my data: the real app only accepts the accounts I authorise on Spotify)
+**Live demo:** https://morotommaso.altervista.org/spotify-stats-demo-app/
+
+To let anyone use the app, Spotify would have to approve it for use outside development mode. That approval has strict requirements that went well beyond the scope of this project. So I kept the API in development mode, with access for a few close friends, and for everyone else I made a static demo: it shows how the app looks, using a snapshot of my Spotify data from October 2026.
 
 <!-- portfolio:summary
 ## The problem
-I wanted to see my Spotify listening stats and my friends' stats in one place. I also wanted to learn how a third-party API with OAuth works in practice.
+Music is one of my passions, and I had seen sites that show your Spotify stats. I took the chance to build my own, with a social side, and learn how a third-party API with OAuth works.
 
 ## The solution
 A Node.js web app: you log in with Spotify and see your top genres, tracks and artists over three time ranges, plus your recent streams. You can add friends by Spotify ID and open their stats. An admin console shows who is online and the server errors.
 
 ## Technical challenges
-- Keeping sessions alive: the server trades the Spotify refresh token for a new access token when the old one expires.
-- Friends' stats: Spotify only shows top items to their owner, so the server stores each refresh token and uses it on the friend's page.
-- Live updates: Firestore listeners push notifications, friend lists and the error log to the browser through Socket.IO.
+- Keeping sessions alive: the server swaps the refresh token for a new access token when the old one expires.
+- Friends' stats: Spotify shows top items only to their owner, so the server stores each user's refresh token.
+- Live updates: Firestore listeners push notifications, friends and errors to the browser through Socket.IO.
 
 ## What I learned
 - How the OAuth 2.0 authorization code flow and refresh tokens work.
-- How to model friends, invites and notifications in Firestore.
+- How to manage sockets for live updates with Socket.IO.
 - How to build an admin console with a live log of server errors.
 
 ## Stack
@@ -32,11 +34,9 @@ Node.js, Express, Socket.IO, Cloud Firestore, Spotify Web API, JavaScript, HTML,
 
 <!-- portfolio:start -->
 ## The problem
-I built this for myself and my friends. Sites like [Spotify Stats](https://spotifystats.com/) show your top tracks and artists, and I wanted my own version with a social side: seeing what my friends listen to.
+Music is one of my passions. I had seen a few sites that show your top tracks and artists on Spotify, and I took the chance to learn new skills while having fun with it. I wanted my own version, for me and my friends, with a social side: seeing what the others listen to.
 
-It was also an excuse to learn how a third-party API works beyond a single request: logging in with OAuth, keeping the session alive with refresh tokens, and calling the API both from the server and from the browser.
-
-The Spotify app stays in development mode, so only the accounts I add by hand in the Spotify dashboard can log in. That's why only my friends and I used it.
+It was also a way to learn how a third-party API works beyond a single request: logging in with OAuth, keeping the session alive with refresh tokens, and calling the API both from the server and from the browser.
 
 ## The solution
 You open the site and log in with your Spotify account. The home page shows your profile picture, name, email and number of friends, then four sections:
@@ -44,15 +44,15 @@ You open the site and log in with your Spotify account. The home page shows your
 - **Top genres:** Spotify doesn't give genres for a user, so I count how many of your top 50 artists have each genre and sort them.
 - **Top tracks:** your 50 most played tracks. If you turn on the speaker button, hovering a cover for one second plays the 30-second preview with a fade in and fade out (Spotify no longer returns previews, see the limitations).
 - **Top artists:** your 50 most played artists, with their popularity score.
-- **Recent streams:** the last 30 tracks you played, grouped by day, with the time since you played them ("18 ore fa").
+- **Recent streams:** the last 30 tracks you played, grouped by day, with the time since you played them.
 
-A selector switches the first three sections between the last 4 weeks, the last 6 months and all time. Clicking a cover or a name opens it on Spotify. The interface is in Italian.
+A selector switches the first three sections between the last 4 weeks, the last 6 months and all time. Clicking a cover or a name opens it on Spotify. The interface is only in Italian.
 
 ![Top artists of all time as round pictures with their popularity, and the recent streams list grouped by day](docs/screenshots/top-artists-recent-streams.webp)
 
-Clicking your profile picture opens a side bar with your friends (and when they were last online), the invites you received (accept or decline) and the invites you sent (cancel). You add a friend by typing their Spotify ID. Every invite, answer or removal sends a notification to the other person, shown as a counter on the profile picture. Clicking a friend opens the same page with their stats.
+Clicking your profile picture opens a side bar. It lists your friends and when they were last online, the invites you received, which you can accept or decline, and the invites you sent, which you can cancel. You add a friend by typing their Spotify ID. Every invite, answer or removal sends a notification to the other person, shown as a counter on the profile picture. Clicking a friend opens the same page with their stats.
 
-My account also has an admin console at `/admin`. It shows live how many people and devices are connected, how many accounts are registered, who went offline last, and the last 30 server errors. I can hide or delete an error, and open the stats of any user.
+One account, chosen with `ADMIN_SPOTIFY_ID` in `.env`, also has an admin console at `/admin`. It shows live how many people and devices are connected, how many accounts are registered, who went offline last, and the latest server errors. The admin can hide or delete an error and open the stats of any user.
 
 ![Admin console with one person online, eleven registered accounts, the list of online accounts and the error log](docs/screenshots/admin-console.webp)
 
@@ -65,7 +65,7 @@ My account also has an admin console at `/admin`. It shows live how many people 
 ## What I learned
 - How the OAuth 2.0 authorization code flow works: `state`, authorization code, access token, refresh token and how long each one lasts.
 - How to use a third-party API from both the server and the browser, reading the official Spotify and Firebase documentation.
-- How to model friends, invites and notifications in Firestore, writing the same relationship on both users.
+- How to manage sockets: checking who opens each connection, starting the listeners for that user and stopping them when the socket disconnects.
 - How to build an admin console: logging every server error to the database with status, path and user, and watching it live.
 
 ## Stack
@@ -137,7 +137,7 @@ Then start the server and open http://localhost:3000:
 npm start
 ```
 
-There are no automated tests. To see the interface without any setup, open [`docs/demo.html`](docs/demo.html) in a browser: it's the static demo, with the data saved inside the file.
+There are no automated tests. To see the interface without any setup, open [`docs/demo.html`](docs/demo.html) in a browser. It's the same static demo as the live link, with my October 2026 data saved inside the file: Spotify only lets accounts added by hand use an app in development mode, and getting it approved for everyone was beyond the scope of this project.
 
 ## Repository structure
 ```
@@ -160,38 +160,25 @@ spotify-stats/
 ```
 
 ## Known limitations and future work
-Security problems I verified in the code:
+What I verified in the code:
 
-- **A friend's token reaches your browser.** On `/<friend-id>` the server puts the friend's access token in the HTML. For one hour, whoever opens the page can call Spotify as that friend with all the app's scopes, including their email and listening history.
-- **`/refresh_token` is open.** `/refresh_token?refresh_token=…&result=string` returns an access token for any refresh token, using the app's client secret.
-- **The OAuth `state` isn't checked.** `/login` generates it, but `/callback` only checks that it's present and never compares it, so the login has no CSRF protection.
-- **Reflected XSS.** Values are put in the HTML without escaping, and the Content Security Policy allows inline event handlers. I ran the server with Spotify and Firestore replaced by stubs: on `/<img src=x onerror=alert(1)>` the error page returns the tag as it is.
-- **`SameSite` is never set.** The cookie option is written `SameSite` instead of `sameSite`, so Express ignores it. The refresh token cookie also lasts 10 years, not 1 year as the comment says.
-- **The rate limit can be bypassed.** With `trust proxy` set to `true`, the client can choose its own IP with `X-Forwarded-For`. `express-rate-limit` prints the `ERR_ERL_PERMISSIVE_TRUST_PROXY` warning about it.
-
-Other problems:
-
-- If `URL` doesn't end with `/`, the home page redirects to itself forever.
-- An address with a final slash and a query string (e.g. `/foo/?a=1`) returns a 500, because `middleware/removeLastSlash.js` uses `querystring` without importing it.
-- `routes/friends.js` and `routes/notifications.js` call `logError` without importing it, so their error paths throw a `ReferenceError` instead of logging.
-- Every page and every POST asks Spotify for the user's profile and writes it to Firestore. Every visit to a friend's page asks Spotify for a new access token for the friend.
-- `server.js` is about 900 lines: pages, OAuth, admin routes and both Socket.IO namespaces in one file, with the same token check copied in every route.
-- The list of online users lives in the server's memory. It resets at every restart and doesn't work with more than one instance.
-- The audio preview no longer plays: in the data Spotify returned in October 2026, saved in `docs/demo.html`, `preview_url` is empty for all 130 tracks.
-- Only accounts I add by hand in the Spotify dashboard can log in. There are no tests, and the interface is only in Italian.
+- **Tokens are exposed.** On a friend's page the server puts the friend's access token in the HTML, so for one hour the visitor can call Spotify as that friend. `/refresh_token?refresh_token=…&result=string` also returns an access token for any refresh token.
+- **Login, cookies and rate limit are weak.** The OAuth `state` is generated but never compared at `/callback`. The cookie option is written `SameSite` instead of `sameSite`, so Express ignores it. With `trust proxy` set to `true`, a fake `X-Forwarded-For` header bypasses the rate limit.
+- **Reflected XSS.** Values go into the HTML without escaping, and the Content Security Policy allows inline handlers. With Spotify and Firestore replaced by stubs, `/<img src=x onerror=alert(1)>` comes back in the error page as it is.
+- **Small bugs.** If `URL` doesn't end with `/`, the home page redirects to itself forever. An address with a final slash and a query string returns a 500, because `querystring` isn't imported. The routes call `logError` without importing it, so their error paths crash instead of logging.
+- **Structure.** `server.js` is about 900 lines, with the same token check copied in every route. Every request asks Spotify for the user's profile, every friend page asks for a new token, and the list of online users lives in memory. There are no tests.
+- **Audio previews.** Spotify no longer returns them: in the October 2026 snapshot, `preview_url` is empty for all 130 tracks.
 
 What I would do next:
 
-- **Split `server.js` by responsibility.** I would write one authentication middleware that checks the cookie, refreshes the token and sets `req.user`. Then pages, admin routes and socket handlers would go in separate files. This would remove the copied token checks and make each part testable on its own.
-- **Keep friends' tokens on the server.** The server would call Spotify for the friend and send the browser only names, pictures and rankings. I would also save the access token with its expiry time and reuse it until it expires, instead of asking for a new one at every visit.
-- **Encrypt refresh tokens in Firestore**, for example with AES-GCM and a key kept in an environment variable. A database leak alone would then not give access to people's Spotify accounts.
-- **Fix the OAuth and cookie problems:** save `state` in a short-lived cookie at `/login` and compare it at `/callback`, let `/refresh_token` use only the refresh token in the caller's cookie, write `sameSite`, and set `trust proxy` to the real number of proxies.
-- **Escape every value in the views** and move the inline `onclick` handlers into the JavaScript files. Then the Content Security Policy could drop `'unsafe-inline'`.
-- **Put the app in a Docker container** with a fixed Node version (`package.json` asks for Node 14, which is no longer supported) and use the Firestore emulator in `docker compose`, so anyone can run the project without a real Firebase project.
+- **Split `server.js` by responsibility.** One authentication middleware would check the cookie, refresh the token and set `req.user`. Pages, admin routes and socket handlers would go in separate files. This removes the copied checks and makes each part testable on its own.
+- **Keep friends' tokens on the server.** The server would call Spotify for the friend and send the browser only names, pictures and rankings. It would also save each access token with its expiry time and reuse it, instead of asking for a new one at every visit.
+- **Encrypt refresh tokens in Firestore**, for example with AES-GCM and a key kept in an environment variable, so a database leak alone doesn't give access to people's Spotify accounts.
+- **Fix the security problems above:** compare `state` at `/callback` using a short-lived cookie, let `/refresh_token` use only the caller's cookie, write `sameSite`, set `trust proxy` to the real number of proxies, and escape every value in the views so the Content Security Policy can drop `'unsafe-inline'`.
+- **Put the app in a Docker container** with a fixed Node version (`package.json` asks for Node 14, which is no longer supported) and the Firestore emulator in `docker compose`, so anyone can run the project without a real Firebase project.
 
 ## Credits and license
-- I designed and built the whole project on my own.
-- Inspired by [Spotify Stats](https://spotifystats.com/).
+- Code and design: Tommaso Moro.
 - I followed the official documentation: [Spotify Web API](https://developer.spotify.com/documentation/web-api) with its [authorization code flow](https://developer.spotify.com/documentation/web-api/tutorials/code-flow), [Firebase Admin SDK](https://firebase.google.com/docs/admin/setup) and [Cloud Firestore](https://firebase.google.com/docs/firestore).
 
 The code is released under the [MIT License](LICENSE).
