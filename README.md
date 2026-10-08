@@ -7,7 +7,7 @@ A web app where my friends and I log in with Spotify to see our top genres, trac
 
 ![Spotify Stats home page with the top genres of all time as pills and the top tracks as album covers](docs/screenshots/cover.webp)
 
-**Live demo:** https://morotommaso.altervista.org/spotify-stats-demo-app/
+**Live demo:** https://tommasomoro8.github.io/spotify-stats/demo.html
 
 To let anyone use the app, Spotify would have to approve it for use outside development mode. That approval has strict requirements that went well beyond the scope of this project. So I kept the API in development mode, with access for a few close friends, and for everyone else I made a static demo: it shows how the app looks, using a snapshot of my Spotify data from October 2026.
 
@@ -150,7 +150,7 @@ spotify-stats/
 │   ├── views/             ← pages as functions that return HTML (landing, home, admin, error)
 │   └── static/            ← browser JavaScript, CSS and icons
 ├── docs/
-│   ├── demo.html          ← static demo with a snapshot of my data
+│   ├── demo.html          ← static demo with a snapshot of my data, served by GitHub Pages
 │   └── screenshots/       ← images used in this README
 ├── .env.example           ← environment variables with placeholder values
 ├── package.json

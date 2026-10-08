@@ -6,7 +6,7 @@ period: "Apr 2023 – May 2023"
 status: "completed"
 role: "solo"
 cover: docs/screenshots/cover.webp
-demo: "https://morotommaso.altervista.org/spotify-stats-demo-app/"
+demo: "https://tommasomoro8.github.io/spotify-stats/demo.html"
 note: "Static demo with a snapshot of my Spotify data from October 2026: opening the app to everyone needs Spotify's approval, whose strict requirements went beyond the scope of this project, so the real app stays in development mode"
 press: []
 screenshots:
