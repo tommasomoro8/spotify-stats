@@ -13,7 +13,7 @@ To let anyone use the app, Spotify would have to approve it for use outside deve
 
 <!-- portfolio:summary
 ## The problem
-Music is one of my passions, and I wanted a way to see stats and information about my Spotify account. I took the chance to build my own, with a social side, and learn how a third-party API with OAuth works.
+Music is one of my passions, and I wanted a way to see stats and information about my Spotify account. So I built my own app, with a social side, and took the chance to learn how a third-party API with OAuth works.
 
 ## The solution
 A Node.js web app where you log in with Spotify and see your top genres, tracks and artists over three time ranges, plus your recent streams. You can add friends by Spotify ID and open their stats. An admin console shows who is online and the server errors.
